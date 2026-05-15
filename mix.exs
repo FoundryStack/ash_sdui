@@ -13,11 +13,21 @@ defmodule AshSdui.MixProject do
       deps: deps(),
       aliases: aliases(),
       description: description(),
+      package: package(),
     ]
   end
 
   defp description() do
     "Server-Driven UI for Phoenix LiveView applications backed by Ash resources."
+  end
+
+  defp package do
+    [
+      licenses: ["Apache-2.0"],
+      links: %{
+        "GitHub" => "https://github.com/FoundryStack/ash_sdui"
+      }
+    ]
   end
 
   def application do
