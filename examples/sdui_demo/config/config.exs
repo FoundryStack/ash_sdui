@@ -10,6 +10,6 @@ config :sdui_demo, SduiDemoWeb.Endpoint,
   pubsub_server: SduiDemo.PubSub,
   live_view: [signing_salt: "sdui_demo_salt"]
 
-config :sdui_demo, :ash_domains, [SduiDemo.Accounts]
+config :sdui_demo, :ash_domains, [SduiDemo.Accounts, SduiDemo.Blog]
 
 import_config "#{config_env()}.exs"
