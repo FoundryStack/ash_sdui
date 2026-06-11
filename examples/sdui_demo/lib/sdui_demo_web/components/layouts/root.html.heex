@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={Phoenix.Controller.get_csrf_token()} />
     <title>SDUI Demo Blog</title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/daisyui@5"></script>
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
   </head>
   <body class="min-h-screen bg-base-200">

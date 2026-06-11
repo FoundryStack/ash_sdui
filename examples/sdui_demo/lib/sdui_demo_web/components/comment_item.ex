@@ -14,7 +14,7 @@ defmodule SduiDemoWeb.Components.CommentItem do
     ~H"""
     <div class="chat chat-start" data-testid="comment-item">
       <%= if @subject do %>
-        <div class="chat-bubble chat-bubble-base-200 text-base-content">
+        <div class="chat-bubble">
           <p class="text-sm"><%= @subject.body %></p>
         </div>
         <%= if @subject.posted_at do %>

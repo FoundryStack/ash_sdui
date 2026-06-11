@@ -90,6 +90,7 @@ defmodule SduiDemoWeb.Live.PostShowLive do
         end
 
       {:error, form} ->
+        IO.inspect(form, label: "Form error")
         {:noreply, assign(socket, :comment_form, to_form(form))}
     end
   end

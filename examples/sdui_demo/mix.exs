@@ -32,6 +32,8 @@ defmodule SduiDemo.MixProject do
       {:phoenix, "~> 1.8"},
       {:phoenix_live_view, "~> 1.0"},
       {:phoenix_storybook, "~> 1.2"},
+      {:esbuild, "~> 0.8", runtime: false},
+      {:tailwind, "~> 0.2", runtime: false},
       {:bandit, "~> 1.0"},
       {:jason, "~> 1.4"},
       {:lazy_html, ">= 0.1.0", only: :test},
@@ -41,7 +43,10 @@ defmodule SduiDemo.MixProject do
 
   defp aliases do
     [
-      setup: ["deps.get"]
+      setup: ["deps.get", "assets.setup", "assets.build"],
+      "assets.setup": ["tailwind.install", "esbuild.install"],
+      "assets.build": ["tailwind default", "esbuild default"],
+      "assets.deploy": ["tailwind default", "esbuild default", "phx.digest"]
     ]
   end
 end

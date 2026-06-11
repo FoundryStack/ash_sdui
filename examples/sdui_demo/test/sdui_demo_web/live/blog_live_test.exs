@@ -135,15 +135,26 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
     end
 
     test "submitting comment adds it to the SDUI tree", %{conn: conn, post: post} do
-      {:ok, view, _html} = live(conn, "/posts/#{post.id}")
+      {:ok, view, html} = live(conn, "/posts/#{post.id}")
 
-      html =
-        view
-        |> form("form[phx-submit='submit_comment']", comment: %{body: "A brand new comment!"})
-        |> render_submit()
+      # Verify initial state has 2 comments
+      assert html =~ "First comment here."
+      assert html =~ "Second comment here."
+      assert html =~ "Comments (2)"
 
-      # Check that the form still renders (no error) and either the comment appears or flash shows success
-      assert html =~ "submit_comment" or html =~ "added" or html =~ "success"
+      view
+      |> form("form[phx-submit='submit_comment']", comment: %{body: "A brand new comment!"})
+      |> render_submit()
+
+      # After submission, get the fresh HTML from the view
+      html = render(view)
+
+      # Verify the new comment appears in the rendered HTML
+      assert html =~ "A brand new comment!"
+      # Verify the comment count increased
+      assert html =~ "Comments (3)"
+      # Verify the success flash message appears
+      assert html =~ "added" or html =~ "success"
     end
   end
 
@@ -187,20 +198,14 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
         |> form("form[phx-submit='save']", post: %{title: "Test Post", body: "Test body"})
         |> render_submit()
 
-      # render_submit returns {:error, {:live_redirect, ...}} when push_navigate is called
-      # This means the form submission was successful and redirected
       case result do
         {:error, {:live_redirect, %{to: to}}} ->
-          # Successful redirect to post show page
           assert String.match?(to, ~r|/posts/[a-f0-9\-]+|)
-
-          # Verify post was actually created
           post_id = String.slice(to, 7..-1)
           {:ok, post} = SduiDemo.Blog.Post |> Ash.get(post_id, domain: SduiDemo.Blog)
           assert post.title == "Test Post"
           assert post.body == "Test body"
         html when is_binary(html) ->
-          # Or we might get HTML if it stays on the same page (error case)
           assert html =~ "Test Post" or html =~ "created"
       end
     end

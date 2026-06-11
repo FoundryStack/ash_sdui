@@ -34,7 +34,7 @@ defmodule SduiDemoWeb.Components.UserCard do
                 <p class="text-sm text-base-content/60 truncate"><%= @subject.email %></p>
               <% end %>
             </div>
-            <div class="badge badge-primary badge-outline badge-sm">Author</div>
+            <div class="badge badge-primary badge-outline badge-sm"><%= Map.get(@props, "role", "Author") %></div>
           </div>
         </div>
       <% else %>
