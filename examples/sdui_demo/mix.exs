@@ -34,7 +34,8 @@ defmodule SduiDemo.MixProject do
       {:phoenix_storybook, "~> 1.2"},
       {:bandit, "~> 1.0"},
       {:jason, "~> 1.4"},
-      {:lazy_html, ">= 0.1.0", only: :test}
+      {:lazy_html, ">= 0.1.0", only: :test},
+      {:gettext, "~> 0.26"}
     ]
   end
 

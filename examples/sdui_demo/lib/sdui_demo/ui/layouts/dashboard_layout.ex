@@ -1,6 +1,5 @@
 defmodule SduiDemo.UI.Layouts.DashboardLayout do
   alias AshSDUI.Layout
-  alias SduiDemo.Accounts.User
 
   def register do
     # Create a layout that finds the first user at render time
