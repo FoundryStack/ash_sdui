@@ -95,7 +95,9 @@ defmodule AshSDUI do
 
       def sdui_root(assigns) do
         tree = Map.get(assigns, :tree) || Map.get(assigns, :__sdui_tree__)
-        AshSDUI.Components.SDUIRoot.render(Map.put(assigns, :tree, tree))
+        assigns = Map.put(assigns, :tree, tree)
+        # Pass through override slots if present
+        AshSDUI.Components.SDUIRoot.render(assigns)
       end
     end
   end
