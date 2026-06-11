@@ -29,7 +29,7 @@ defmodule SduiDemo.MixProject do
       {:ash_sdui, path: "../../"},
       {:ash, "~> 3.20"},
       {:ash_phoenix, "~> 2.0"},
-      {:phoenix, "~> 1.7"},
+      {:phoenix, "~> 1.8"},
       {:phoenix_live_view, "~> 1.0"},
       {:phoenix_storybook, "~> 1.2"},
       {:bandit, "~> 1.0"},
