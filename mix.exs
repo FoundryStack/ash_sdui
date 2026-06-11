@@ -47,7 +47,8 @@ defmodule AshSdui.MixProject do
       {:spark, "~> 2.0"},
       {:phoenix_live_view, "~> 1.0"},
       {:phoenix, "~> 1.7"},
-      {:jason, "~> 1.4"}
+      {:jason, "~> 1.4"},
+      {:phoenix_storybook, "~> 1.2", only: :dev, optional: true}
     ]
   end
 
