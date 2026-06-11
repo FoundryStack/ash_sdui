@@ -3,64 +3,35 @@ defmodule SduiDemoWeb.Live.DemoLiveTest do
 
   import Phoenix.LiveViewTest
 
-  setup do
-    # Initialize registry
-    AshSDUI.Registry.init_table()
-
-    # Create a test user (will be the first and only user in the ETS table)
-    {:ok, user} =
-      SduiDemo.Accounts.User
-      |> Ash.Changeset.for_create(:create, %{
-        username: "test_user",
-        email: "test@example.com",
-        avatar_url: "https://example.com/test.jpg"
-      })
-      |> Ash.create()
-
-    {:ok, user: user}
-  end
-
-  describe "demo_live renders components" do
-    test "renders root TwoColumnLayout component", %{conn: conn} do
+  describe "demo_live landing page" do
+    test "renders hero section with AshSDUI title", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
-      # Verify the layout structure is present
-      assert html =~ "two-column-layout"
-      assert html =~ "sidebar"
-      assert html =~ "main-content"
+      assert html =~ "AshSDUI"
+      assert html =~ "Server-driven UI"
     end
 
-    test "renders ActionButton in main region", %{conn: conn} do
+    test "renders feature cards", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
-      # Verify ActionButton is rendered with proper class and content
-      assert html =~ "action-button"
-      assert html =~ "Click"
+      assert html =~ "Tree-based layout"
+      assert html =~ "Multi-resource nesting"
+      assert html =~ "i18n via gettext"
+      assert html =~ "Storybook integration"
     end
 
-    test "renders nested components with proper HTML structure", %{conn: conn} do
+    test "renders navigation links to blog posts", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
-      # Verify proper nesting with opening and closing tags
-      assert html =~ ~s(<div class="two-column-layout")
-      assert html =~ ~s(<aside class="sidebar">)
-      assert html =~ ~s(<main class="main-content">)
-      assert html =~ ~s(</aside>)
-      assert html =~ ~s(</main>)
+      assert html =~ "/posts"
+      assert html =~ "Browse Blog Posts"
     end
 
-    test "renders UserCard with loaded user data", %{conn: conn} do
+    test "renders how it works section", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
-      # Verify UserCard is rendered
-      assert html =~ "user-card"
-
-      # Verify user data is loaded (not showing "No user loaded")
-      refute html =~ "No user loaded"
-
-      # The demo layout resolves the first available user for display
-      assert html =~ "_user"
-      assert html =~ "@example.com"
+      assert html =~ "How it works"
+      assert html =~ "AshSDUI.Renderer"
     end
   end
 end
