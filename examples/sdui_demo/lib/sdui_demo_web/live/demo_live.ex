@@ -88,7 +88,7 @@ defmodule SduiDemoWeb.Live.DemoLive do
               At render time, <code class="badge badge-ghost badge-sm">AshSDUI.Renderer.to_tree/1</code> resolves each node's subject from Ash
             </li>
             <li class="step step-primary">
-              <code class="badge badge-ghost badge-sm">&lt;.sdui_root tree={@tree} /&gt;</code> recursively renders the tree via registered Phoenix components
+              <code class="badge badge-ghost badge-sm">&lt;SDUIRoot tree=&#123;tree&#125; /&gt;</code> recursively renders the tree via registered Phoenix components
             </li>
           </ol>
         </div>
