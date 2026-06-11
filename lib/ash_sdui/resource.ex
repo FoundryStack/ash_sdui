@@ -51,7 +51,11 @@ defmodule AshSDUI.Resource do
       ],
       label: [
         type: :string,
-        doc: "Display label for the action"
+        doc: "Display label for the action (takes precedence over label_key)"
+      ],
+      label_key: [
+        type: :string,
+        doc: "Gettext message key for the action label (resolved at runtime via configured backend)"
       ],
       icon: [
         type: :string,
@@ -78,7 +82,11 @@ defmodule AshSDUI.Resource do
       ],
       label: [
         type: :string,
-        doc: "Display label"
+        doc: "Display label (takes precedence over label_key)"
+      ],
+      label_key: [
+        type: :string,
+        doc: "Gettext message key for the attribute label (resolved at runtime via configured backend)"
       ],
       icon: [
         type: :string,
@@ -108,6 +116,15 @@ defmodule AshSDUI.Resource do
       for_resource: [
         type: :atom,
         doc: "The Ash resource this UI module annotates (used in standalone mode)"
+      ],
+      gettext_backend: [
+        type: :atom,
+        doc: "Gettext backend module for resolving label_key values (e.g. MyApp.Gettext)"
+      ],
+      gettext_domain: [
+        type: :string,
+        default: "sdui",
+        doc: "Gettext domain for label_key lookups (default: \"sdui\")"
       ]
     ],
     entities: [@ui_action, @ui_attribute]
