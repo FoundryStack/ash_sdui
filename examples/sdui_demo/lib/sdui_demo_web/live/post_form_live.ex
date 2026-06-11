@@ -74,6 +74,24 @@ defmodule SduiDemoWeb.Live.PostFormLive do
           post_params
       end
 
+    params =
+      case socket.assigns.live_action do
+        :new ->
+          demo_user = socket.assigns.demo_user
+
+          base = %{
+            "title" => post_params["title"],
+            "body" => post_params["body"]
+          }
+
+          base
+          |> maybe_put("author_id", demo_user && to_string(demo_user.id))
+          |> maybe_put("published_at", if(post_params["publish"] == "true", do: DateTime.to_iso8601(DateTime.utc_now())))
+
+        :edit ->
+          post_params
+      end
+
     case AshPhoenix.Form.submit(socket.assigns.form.source, params: params) do
       {:ok, post} ->
         {:noreply,

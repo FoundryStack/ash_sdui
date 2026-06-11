@@ -191,11 +191,7 @@ defmodule SduiDemoWeb.Live.PostShowLive do
         <div class="divider">Add a comment</div>
         <div class="card bg-base-100 shadow border border-base-300 max-w-2xl">
           <div class="card-body">
-            <form
-              phx-change="validate_comment"
-              phx-submit="submit_comment"
-              class="space-y-4"
-            >
+            <form phx-change="validate_comment" phx-submit="submit_comment" class="space-y-4">
               <fieldset class="fieldset">
                 <legend class="fieldset-legend">Your comment</legend>
                 <textarea

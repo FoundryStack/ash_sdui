@@ -193,6 +193,12 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
         {:error, {:live_redirect, %{to: to}}} ->
           # Successful redirect to post show page
           assert String.match?(to, ~r|/posts/[a-f0-9\-]+|)
+
+          # Verify post was actually created
+          post_id = String.slice(to, 7..-1)
+          {:ok, post} = SduiDemo.Blog.Post |> Ash.get(post_id, domain: SduiDemo.Blog)
+          assert post.title == "Test Post"
+          assert post.body == "Test body"
         html when is_binary(html) ->
           # Or we might get HTML if it stays on the same page (error case)
           assert html =~ "Test Post" or html =~ "created"
