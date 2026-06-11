@@ -8,15 +8,17 @@ defmodule SduiDemoWeb.Live.MinimalTest do
       m -> m
     end
 
-    assert map_size(map) == 3
+    assert map_size(map) == 4
     assert "UserCard@v1" in Map.keys(map)
     assert "ActionButton@v1" in Map.keys(map)
     assert "Layouts.TwoColumnLayout@v1" in Map.keys(map)
+    assert "UserList@v1" in Map.keys(map)
   end
 
   test "registry lookup works for all components" do
     assert {:ok, _entry} = AshSDUI.Registry.lookup("UserCard@v1")
     assert {:ok, _entry} = AshSDUI.Registry.lookup("ActionButton@v1")
     assert {:ok, _entry} = AshSDUI.Registry.lookup("Layouts.TwoColumnLayout@v1")
+    assert {:ok, _entry} = AshSDUI.Registry.lookup("UserList@v1")
   end
 end
