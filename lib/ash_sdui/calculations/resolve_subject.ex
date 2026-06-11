@@ -7,15 +7,17 @@ defmodule AshSDUI.Calculations.ResolveSubject do
     with resource_name when not is_nil(resource_name) <- record.subject_resource,
          subject_id when not is_nil(subject_id) <- record.subject_id,
          {:ok, resource_module} <- resolve_module(resource_name) do
-      # Handle special case: "first" means get the first record
+      # Handle special ordinal subjects: "first", "second", "third", etc.
       actual_id =
-        if subject_id == "first" do
-          case Ash.read(resource_module) do
-            {:ok, [first | _]} -> first.id
-            _ -> nil
-          end
-        else
-          subject_id
+        case ordinal_index(subject_id) do
+          nil ->
+            subject_id
+
+          index ->
+            case Ash.read(resource_module) do
+              {:ok, records} when length(records) > index -> Enum.at(records, index).id
+              _ -> nil
+            end
         end
 
       if actual_id do
@@ -41,4 +43,14 @@ defmodule AshSDUI.Calculations.ResolveSubject do
       {:error, _} -> {:error, :not_loaded}
     end
   end
+
+  @ordinals %{
+    "first" => 0,
+    "second" => 1,
+    "third" => 2,
+    "fourth" => 3,
+    "fifth" => 4
+  }
+
+  defp ordinal_index(subject_id), do: Map.get(@ordinals, subject_id)
 end
