@@ -11,7 +11,7 @@ defmodule SduiDemoWeb.Live.PostShowLive do
   def mount(%{"id" => id}, _session, socket) do
     case load_post(id) do
       {:ok, post, comments} ->
-        layout_name = PostShowLayout.build_and_register(post, comments)
+        layout_name = PostShowLayout.build_and_register(post, comments, mode: :standard)
         {:ok, tree} = AshSDUI.Renderer.to_tree(layout_name)
         demo_user = get_demo_user()
 
@@ -27,6 +27,7 @@ defmodule SduiDemoWeb.Live.PostShowLive do
          |> assign(:__sdui_tree__, tree)
          |> assign(:comment_form, comment_form)
          |> assign(:demo_user, demo_user)
+         |> assign(:layout_mode, :standard)
          |> assign(:page_title, post.title)}
 
       :not_found ->
@@ -35,6 +36,16 @@ defmodule SduiDemoWeb.Live.PostShowLive do
          |> put_flash(:error, "Post not found.")
          |> push_navigate(to: "/posts")}
     end
+  end
+
+  @impl true
+  def handle_event("switch_layout", %{"mode" => mode_str}, socket) do
+    mode = String.to_atom(mode_str)
+    post = socket.assigns.post
+    comments = socket.assigns.comments
+    layout_name = PostShowLayout.build_and_register(post, comments, mode: mode)
+    {:ok, tree} = AshSDUI.Renderer.to_tree(layout_name)
+    {:noreply, socket |> assign(:__sdui_tree__, tree) |> assign(:layout_mode, mode)}
   end
 
   @impl true
@@ -58,7 +69,7 @@ defmodule SduiDemoWeb.Live.PostShowLive do
       {:ok, _comment} ->
         case load_post(to_string(post.id)) do
           {:ok, updated_post, comments} ->
-            layout_name = PostShowLayout.build_and_register(updated_post, comments)
+            layout_name = PostShowLayout.build_and_register(updated_post, comments, mode: socket.assigns.layout_mode)
             {:ok, tree} = AshSDUI.Renderer.to_tree(layout_name)
 
             fresh_form =
@@ -91,7 +102,7 @@ defmodule SduiDemoWeb.Live.PostShowLive do
       {:ok, updated_post} ->
         case load_post(to_string(updated_post.id)) do
           {:ok, post, comments} ->
-            layout_name = PostShowLayout.build_and_register(post, comments)
+            layout_name = PostShowLayout.build_and_register(post, comments, mode: socket.assigns.layout_mode)
             {:ok, tree} = AshSDUI.Renderer.to_tree(layout_name)
 
             {:noreply,
@@ -148,7 +159,31 @@ defmodule SduiDemoWeb.Live.PostShowLive do
         <% end %>
       </div>
 
-      <%!-- SDUI renders the post display: PostCard → UserCard (author) + CommentItem list --%>
+      <div class="tabs tabs-boxed mb-6">
+        <button
+          phx-click="switch_layout"
+          phx-value-mode="standard"
+          class={["tab", @layout_mode == :standard && "tab-active"]}
+        >
+          Standard
+        </button>
+        <button
+          phx-click="switch_layout"
+          phx-value-mode="blog"
+          class={["tab", @layout_mode == :blog && "tab-active"]}
+        >
+          Blog
+        </button>
+        <button
+          phx-click="switch_layout"
+          phx-value-mode="minimal"
+          class={["tab", @layout_mode == :minimal && "tab-active"]}
+        >
+          Minimal
+        </button>
+      </div>
+
+      <%!-- SDUI renders the post display in selected layout mode --%>
       <.sdui_root tree={@__sdui_tree__} />
 
       <%!-- Comment form — native Phoenix, not SDUI (forms are not server-driven) --%>
@@ -156,8 +191,7 @@ defmodule SduiDemoWeb.Live.PostShowLive do
         <div class="divider">Add a comment</div>
         <div class="card bg-base-100 shadow border border-base-300 max-w-2xl">
           <div class="card-body">
-            <.form
-              for={@comment_form}
+            <form
               phx-change="validate_comment"
               phx-submit="submit_comment"
               class="space-y-4"
@@ -177,7 +211,7 @@ defmodule SduiDemoWeb.Live.PostShowLive do
               <div class="flex justify-end">
                 <button type="submit" class="btn btn-primary btn-sm">Post Comment</button>
               </div>
-            </.form>
+            </form>
           </div>
         </div>
       </div>

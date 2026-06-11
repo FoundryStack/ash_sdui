@@ -113,7 +113,7 @@ defmodule SduiDemoWeb.Live.PostFormLive do
 
       <div class="card bg-base-100 shadow-md border border-base-300">
         <div class="card-body">
-          <.form for={@form} phx-change="validate" phx-submit="save" class="space-y-5">
+          <form phx-change="validate" phx-submit="save" class="space-y-5">
             <fieldset class="fieldset">
               <legend class="fieldset-legend">Title</legend>
               <input
@@ -178,7 +178,7 @@ defmodule SduiDemoWeb.Live.PostFormLive do
                 <%= if @live_action == :new, do: "Create Post", else: "Save Changes" %>
               </button>
             </div>
-          </.form>
+          </form>
         </div>
       </div>
     </div>
