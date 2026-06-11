@@ -2,20 +2,22 @@ defmodule AshSDUI.Components.SDUIRoot do
   @moduledoc false
   use Phoenix.Component
 
-  def render(%{tree: nil} = assigns) do
-    ~H"""
-    <div class="sdui-error">UI graph not found.</div>
-    """
-  end
+  def render(assigns) do
+    tree = Map.get(assigns, :tree)
 
-  def render(%{tree: tree} = assigns) do
-    # Support both old :override slot style and new overrides map
-    overrides = build_override_map(assigns[:override] || assigns[:overrides] || [])
-    assigns = assign(assigns, :_overrides, overrides) |> assign(:node, tree)
+    if tree == nil do
+      ~H"""
+      <div class="sdui-error">UI graph not found.</div>
+      """
+    else
+      # Support both old :override slot style and new overrides map
+      overrides = build_override_map(assigns[:override] || assigns[:overrides] || [])
+      assigns = assign(assigns, :_overrides, overrides) |> assign(:node, tree)
 
-    ~H"""
-    <.render_node node={@node} _overrides={@_overrides} />
-    """
+      ~H"""
+      <.render_node node={@node} _overrides={@_overrides} />
+      """
+    end
   end
 
   defp render_node(%{node: nil} = assigns), do: ~H""
