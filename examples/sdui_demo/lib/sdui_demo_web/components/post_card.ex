@@ -13,51 +13,54 @@ defmodule SduiDemoWeb.Components.PostCard do
 
   def render(assigns) do
     ~H"""
-    <article class="post-card bg-white rounded-lg shadow-md overflow-hidden" data-testid="post-card">
+    <article class="card bg-base-100 shadow border border-base-300" data-testid="post-card">
       <%= if @subject do %>
-        <div class="p-6">
-          <div class="flex items-start justify-between mb-4">
-            <h2 class="text-2xl font-bold text-gray-900 flex-1"><%= @subject.title %></h2>
+        <div class="card-body">
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <h1 class="card-title text-2xl leading-snug flex-1"><%= @subject.title %></h1>
             <%= if @subject.published_at do %>
-              <span class="text-sm text-green-600 bg-green-50 px-2 py-1 rounded ml-4 shrink-0">
-                Published
-              </span>
+              <div class="badge badge-success shrink-0">Published</div>
             <% else %>
-              <span class="text-sm text-yellow-600 bg-yellow-50 px-2 py-1 rounded ml-4 shrink-0">
-                Draft
-              </span>
+              <div class="badge badge-warning shrink-0">Draft</div>
             <% end %>
           </div>
 
-          <p class="text-gray-700 leading-relaxed mb-6"><%= @subject.body %></p>
+          <%= if @subject.published_at do %>
+            <p class="text-xs text-base-content/40 -mt-2 mb-4">
+              <%= Calendar.strftime(@subject.published_at, "%B %d, %Y") %>
+            </p>
+          <% end %>
+
+          <div class="prose max-w-none text-base-content/80">
+            <p><%= @subject.body %></p>
+          </div>
 
           <%= if map_size(@children) > 0 && @children[:author] do %>
-            <div class="border-t border-gray-100 pt-4 mb-4">
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Author</p>
-              <div class="author-region">
-                <%= for child_rendered <- @children[:author] do %>
-                  <%= child_rendered %>
-                <% end %>
-              </div>
+            <div class="divider text-xs font-semibold text-base-content/40 uppercase tracking-widest">
+              Author
+            </div>
+            <div class="author-region">
+              <%= for child_rendered <- @children[:author] do %>
+                <%= child_rendered %>
+              <% end %>
             </div>
           <% end %>
 
           <%= if map_size(@children) > 0 && @children[:comments] do %>
-            <div class="border-t border-gray-100 pt-4">
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                Comments (<%= length(@children[:comments]) %>)
-              </p>
-              <div class="comments-region space-y-3">
-                <%= for child_rendered <- @children[:comments] do %>
-                  <%= child_rendered %>
-                <% end %>
-              </div>
+            <div class="divider text-xs font-semibold text-base-content/40 uppercase tracking-widest">
+              Comments (<%= length(@children[:comments]) %>)
+            </div>
+            <div class="comments-region space-y-3">
+              <%= for child_rendered <- @children[:comments] do %>
+                <%= child_rendered %>
+              <% end %>
             </div>
           <% end %>
         </div>
       <% else %>
-        <div class="p-8 text-center">
-          <p class="text-gray-500 text-lg">No post loaded</p>
+        <div class="card-body items-center text-center py-12">
+          <div class="text-4xl mb-3">📄</div>
+          <p class="text-base-content/40">No post loaded</p>
         </div>
       <% end %>
     </article>

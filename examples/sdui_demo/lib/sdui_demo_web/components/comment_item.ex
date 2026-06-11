@@ -12,16 +12,20 @@ defmodule SduiDemoWeb.Components.CommentItem do
 
   def render(assigns) do
     ~H"""
-    <div class="comment-item bg-gray-50 rounded-lg p-3 border border-gray-200" data-testid="comment-item">
+    <div class="chat chat-start" data-testid="comment-item">
       <%= if @subject do %>
-        <p class="text-gray-800 text-sm"><%= @subject.body %></p>
+        <div class="chat-bubble chat-bubble-base-200 text-base-content">
+          <p class="text-sm"><%= @subject.body %></p>
+        </div>
         <%= if @subject.posted_at do %>
-          <p class="text-xs text-gray-400 mt-1">
-            <%= Calendar.strftime(@subject.posted_at, "%b %d, %Y") %>
-          </p>
+          <div class="chat-footer text-xs text-base-content/40 mt-1">
+            <%= Calendar.strftime(@subject.posted_at, "%b %d, %Y at %H:%M") %>
+          </div>
         <% end %>
       <% else %>
-        <p class="text-gray-400 text-sm italic">Comment unavailable</p>
+        <div class="chat-bubble chat-bubble-ghost">
+          <p class="text-xs italic text-base-content/40">Comment unavailable</p>
+        </div>
       <% end %>
     </div>
     """
