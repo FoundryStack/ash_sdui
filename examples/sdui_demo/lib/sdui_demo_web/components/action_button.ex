@@ -10,8 +10,11 @@ defmodule SduiDemoWeb.Components.ActionButton do
   use Phoenix.Component
 
   def render(assigns) do
+    props = assigns.props || %{}
+    variant = Map.get(props, "variant", "btn-outline")
+    assigns = assign(assigns, :props, props) |> assign(:variant, variant)
     ~H"""
-    <a href={Map.get(@props, "url", "#")} class="btn action-button" data-testid="action-button">
+    <a href={Map.get(@props, "url", "#")} class={["btn action-button", @variant]} data-testid="action-button">
       <%= Map.get(@props, "label", "Click") %>
     </a>
     """
