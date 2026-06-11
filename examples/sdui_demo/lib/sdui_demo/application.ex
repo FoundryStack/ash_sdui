@@ -7,6 +7,7 @@ defmodule SduiDemo.Application do
     SduiDemo.DemoData.bootstrap()
 
     SduiDemo.UI.Layouts.DashboardLayout.register()
+    SduiDemo.UI.Layouts.BlogLayout.register()
 
     children = [
       {Phoenix.PubSub, name: SduiDemo.PubSub},
