@@ -1,11 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SDUI Demo</title>
+    <title>SDUI Demo Blog</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/daisyui@5"></script>
   </head>
-  <body>
+  <body class="min-h-screen bg-base-200">
+    <nav class="navbar bg-base-100 shadow-sm border-b border-base-300">
+      <div class="navbar-start">
+        <a href="/" class="btn btn-ghost text-xl font-bold">
+          <span class="text-primary">⚡</span> AshSDUI Blog
+        </a>
+      </div>
+      <div class="navbar-center hidden lg:flex">
+        <ul class="menu menu-horizontal px-1 gap-1">
+          <li><a href="/" class="font-medium">Home</a></li>
+          <li><a href="/posts" class="font-medium">Posts</a></li>
+        </ul>
+      </div>
+      <div class="navbar-end">
+        <a href="/posts/new" class="btn btn-primary btn-sm">
+          + New Post
+        </a>
+        <a href="/storybook" class="btn btn-ghost btn-sm ml-2">
+          Storybook
+        </a>
+      </div>
+    </nav>
+
     <%= @inner_content %>
   </body>
 </html>

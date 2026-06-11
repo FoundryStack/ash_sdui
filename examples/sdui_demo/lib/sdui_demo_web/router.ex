@@ -19,6 +19,10 @@ defmodule SduiDemoWeb.Router do
     pipe_through :browser
 
     live "/", Live.DemoLive
+    live "/posts", Live.PostsLive
+    live "/posts/new", Live.PostFormLive, :new
+    live "/posts/:id", Live.PostShowLive
+    live "/posts/:id/edit", Live.PostFormLive, :edit
 
     live_storybook "/storybook", backend_module: SduiDemoWeb.Storybook
   end
