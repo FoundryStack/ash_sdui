@@ -63,9 +63,9 @@ defmodule AshSDUI.Mock do
   def from_resource(resource, opts \\ []) do
     component_name =
       Keyword.get(opts, :component_name) ||
-      AshSDUI.Resource.Info.default_component(resource) ||
-      raise ArgumentError,
-            "Pass :component_name or annotate resource with default_component"
+        AshSDUI.Resource.Info.default_component(resource) ||
+        raise ArgumentError,
+              "Pass :component_name or annotate resource with default_component"
 
     # for standalone UI modules, subject_resource is the domain resource, not the UI module
     domain_resource = AshSDUI.Resource.Info.for_resource(resource)

@@ -13,6 +13,8 @@ defmodule AshSDUI.Cache do
   end
 
   def get(name) do
+    ensure_table!()
+
     case :ets.lookup(@table, name) do
       [{^name, tree}] -> {:ok, tree}
       [] -> {:error, :not_found}
@@ -20,11 +22,13 @@ defmodule AshSDUI.Cache do
   end
 
   def put(name, tree) do
+    ensure_table!()
     :ets.insert(@table, {name, tree})
     :ok
   end
 
   def evict(name) do
+    ensure_table!()
     :ets.delete(@table, name)
     :ok
   end
@@ -39,18 +43,34 @@ defmodule AshSDUI.Cache do
 
   def evict_for_node(_node) do
     # Evict all when we can't determine the root
+    ensure_table!()
     :ets.delete_all_objects(@table)
     :ok
   end
 
   def flush do
+    ensure_table!()
     :ets.delete_all_objects(@table)
     :ok
   end
 
   @impl true
   def init(_) do
-    :ets.new(@table, [:named_table, :public, read_concurrency: true])
+    ensure_table!()
     {:ok, %{}}
+  end
+
+  defp ensure_table! do
+    case :ets.whereis(@table) do
+      :undefined ->
+        :ets.new(@table, [:named_table, :public, read_concurrency: true])
+        :ok
+
+      _table ->
+        :ok
+    end
+  rescue
+    ArgumentError ->
+      :ok
   end
 end

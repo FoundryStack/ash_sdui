@@ -146,7 +146,9 @@ defmodule AshSDUI.ContextDumper do
       label: attribute.label,
       icon: attribute.icon,
       hidden: attribute.hidden,
-      order: attribute.order
+      order: attribute.order,
+      widget: attribute.widget,
+      field_component: attribute.field_component && to_string(attribute.field_component)
     }
   end
 

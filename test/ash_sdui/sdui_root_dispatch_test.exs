@@ -2,6 +2,8 @@ defmodule AshSDUI.SDUIRootDispatchTest do
   use ExUnit.Case, async: false
 
   import Phoenix.LiveViewTest
+  alias AshSDUI.TestFixtures.SDUIRootPolicyDomain, as: PolicyDomain
+  alias AshSDUI.TestFixtures.SDUIRootTenantPost, as: TenantPost
 
   defmodule MockUserCard do
     use Phoenix.Component
@@ -18,6 +20,7 @@ defmodule AshSDUI.SDUIRootDispatchTest do
   setup do
     AshSDUI.Cache.start_link()
     :persistent_term.put({AshSDUI.Registry, :components}, %{})
+    Ash.DataLayer.Ets.stop(TenantPost)
     :ok
   end
 
@@ -49,7 +52,10 @@ defmodule AshSDUI.SDUIRootDispatchTest do
       defmodule MockWithAsserts do
         use Phoenix.Component
 
-        def render(%{subject: nil, props: %{"key" => "value"}, region: :sidebar, children: %{}} = assigns) do
+        def render(
+              %{subject: nil, props: %{"key" => "value"}, region: :sidebar, children: %{}} =
+                assigns
+            ) do
           ~H"""
           <div class="assertions-passed"><%= @subject %></div>
           """
@@ -106,6 +112,25 @@ defmodule AshSDUI.SDUIRootDispatchTest do
     test "resolve/1 returns nil when module cannot be loaded" do
       node = %{subject_resource: "Nonexistent.Resource", subject_id: "some-uuid"}
       assert nil == AshSDUI.Calculations.ResolveSubject.resolve(node)
+    end
+
+    test "resolve/2 forwards tenant context to Ash reads" do
+      {:ok, post} =
+        TenantPost
+        |> Ash.Changeset.for_create(:create, %{title: "Context aware", account_id: "tenant-a"})
+        |> Ash.create(tenant: "tenant-a")
+
+      node = %{subject_resource: to_string(TenantPost), subject_id: to_string(post.id)}
+
+      assert nil == AshSDUI.Calculations.ResolveSubject.resolve(node, domain: PolicyDomain)
+
+      assert %TenantPost{id: resolved_id} =
+               AshSDUI.Calculations.ResolveSubject.resolve(node,
+                 domain: PolicyDomain,
+                 context: %{tenant: "tenant-a"}
+               )
+
+      assert resolved_id == post.id
     end
   end
 

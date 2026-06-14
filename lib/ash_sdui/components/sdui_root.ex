@@ -12,36 +12,43 @@ defmodule AshSDUI.Components.SDUIRoot do
     else
       # Support both old :override slot style and new overrides map
       overrides = build_override_map(assigns[:override] || assigns[:overrides] || [])
-      assigns = assign(assigns, :_overrides, overrides) |> assign(:node, tree)
+      assigns =
+        assigns
+        |> assign(:_overrides, overrides)
+        |> assign(:_resolve_opts, resolve_opts(assigns))
+        |> assign(:node, tree)
 
       ~H"""
-      <.render_node node={@node} _overrides={@_overrides} />
+      <.render_node node={@node} _overrides={@_overrides} _resolve_opts={@_resolve_opts} />
       """
     end
   end
 
   defp render_node(%{node: nil} = assigns), do: ~H""
 
-  defp render_node(%{node: node, _overrides: overrides} = assigns) do
-    {module, subject} = resolve_component(node)
-    children_by_region = pre_render_children(node.children || [], overrides)
+  defp render_node(%{node: raw_node, _overrides: overrides, _resolve_opts: resolve_opts} = assigns) do
+    {node, override} = apply_override(raw_node, overrides)
+    {module, subject} = resolve_component(node, override, resolve_opts)
+    children_by_region = pre_render_children(node.children || [], overrides, resolve_opts)
 
     assigns =
       assigns
       |> assign(:component_module, module)
       |> assign(:subject, subject)
+      |> assign(:props, merged_props(node, override))
+      |> assign(:node, node)
       |> assign(:children_by_region, children_by_region)
 
     ~H"""
     <%= if @component_module do %>
-      <%= render_component(@component_module, @subject, @node.static_props, @node.region, @children_by_region) %>
+      <%= render_component(@component_module, @subject, @props, @node.region, @children_by_region) %>
     <% else %>
       <div
         data-sdui-component={@node.component_name}
         data-sdui-region={@node.region}
       >
-        <%= for child <- (@node.children || []) do %>
-          <.render_node node={child} _overrides={@_overrides} />
+        <%= for child <- Enum.reject(@node.children || [], &skip_node?(&1, @_overrides)) do %>
+          <.render_node node={child} _overrides={@_overrides} _resolve_opts={@_resolve_opts} />
         <% end %>
       </div>
     <% end %>
@@ -63,64 +70,84 @@ defmodule AshSDUI.Components.SDUIRoot do
     end
   end
 
-  defp resolve_component(node) do
-    case AshSDUI.Registry.lookup(node.component_name) do
+  defp resolve_component(node, override, resolve_opts) do
+    case component_module(node, override) do
+      {:ok, module} ->
+        subject = Map.get(override, :subject, AshSDUI.Calculations.ResolveSubject.resolve(node, resolve_opts))
+        {module, subject}
+
+      :error ->
+        {nil, nil}
+    end
+  end
+
+  defp component_module(node, override) do
+    component_name =
+      Map.get(override, :component_name) ||
+        Map.get(override, :component) ||
+        node.component_name
+
+    case AshSDUI.Registry.lookup(component_name) do
       {:ok, entry} ->
-        subject = AshSDUI.Calculations.ResolveSubject.resolve(node)
-        {entry.module, subject}
+        {:ok, entry.module}
 
       {:error, :not_found} ->
-        {nil, nil}
+        :error
     end
   end
 
   defp build_override_map(overrides) when is_list(overrides) do
     Map.new(overrides, fn
-      %{node_id: node_id} -> {node_id, true}
-      other -> {other, true}
+      %{node_id: node_id} = override -> {node_id, Map.delete(override, :node_id)}
+      {key, value} -> {key, normalize_override(value)}
+      other -> {other, %{}}
     end)
   end
 
   defp build_override_map(overrides) when is_map(overrides) do
-    overrides
+    Map.new(overrides, fn {key, value} -> {key, normalize_override(value)} end)
   end
 
-  defp pre_render_children(children, overrides) do
+  defp pre_render_children(children, overrides, resolve_opts) do
     children
     |> Enum.group_by(& &1.region)
     |> Map.new(fn {region, nodes} ->
       rendered =
         nodes
         |> Enum.sort_by(& &1.order)
-        |> Enum.map(&render_child_node(&1, overrides))
+        |> Enum.reject(&skip_node?(&1, overrides))
+        |> Enum.map(&render_child_node(&1, overrides, resolve_opts))
 
       {region, rendered}
     end)
   end
 
-  defp render_child_node(node, overrides) do
-    {module, subject} = resolve_component(node)
-    children_by_region = pre_render_children(node.children || [], overrides)
+  defp render_child_node(raw_node, overrides, resolve_opts) do
+    {node, override} = apply_override(raw_node, overrides)
+    {module, subject} = resolve_component(node, override, resolve_opts)
+    children_by_region = pre_render_children(node.children || [], overrides, resolve_opts)
+    props = merged_props(node, override)
 
     if module do
       module.render(%{
         subject: subject,
-        props: node.static_props,
+        props: props,
         region: node.region,
         children: children_by_region,
         __changed__: nil
       })
     else
-      html_placeholder(node, overrides)
+      html_placeholder(node, overrides, resolve_opts)
     end
   end
 
-  defp html_placeholder(node, overrides) do
+  defp html_placeholder(node, overrides, resolve_opts) do
     children_html =
       (node.children || [])
       |> Enum.sort_by(& &1.order)
+      |> Enum.reject(&skip_node?(&1, overrides))
       |> Enum.map(fn child ->
-        content = render_child_node(child, overrides)
+        content = render_child_node(child, overrides, resolve_opts)
 
         case content do
           content when is_binary(content) ->
@@ -140,4 +167,61 @@ defmodule AshSDUI.Components.SDUIRoot do
     """
     |> Phoenix.HTML.raw()
   end
+
+  defp apply_override(node, overrides) do
+    override = Map.get(overrides, node.id, Map.get(overrides, node.component_name, %{}))
+    children = override_children(node.children || [], override)
+
+    updated_node =
+      node
+      |> Map.put(:component_name, Map.get(override, :component_name, Map.get(override, :component, node.component_name)))
+      |> Map.put(:static_props, merged_props(node, override))
+      |> Map.put(:subject_resource, Map.get(override, :subject_resource, node.subject_resource))
+      |> Map.put(:subject_id, normalize_subject_id(Map.get(override, :subject_id, node.subject_id)))
+      |> Map.put(:children, children)
+
+    {updated_node, override}
+  end
+
+  defp merged_props(node, override) do
+    Map.merge(node.static_props || %{}, normalize_props(Map.get(override, :props, %{})))
+  end
+
+  defp override_children(children, override) do
+    base_children =
+      case Map.fetch(override, :children) do
+        {:ok, override_children} -> List.wrap(override_children)
+        :error -> children
+      end
+
+    base_children ++ List.wrap(Map.get(override, :append_children, []))
+  end
+
+  defp skip_node?(node, overrides) do
+    Map.get(overrides, node.id, Map.get(overrides, node.component_name, %{}))
+    |> Map.get(:skip?, false)
+  end
+
+  defp normalize_override(nil), do: %{}
+  defp normalize_override(false), do: %{skip?: true}
+  defp normalize_override(true), do: %{}
+  defp normalize_override(override) when is_list(override), do: Enum.into(override, %{})
+  defp normalize_override(override) when is_map(override), do: override
+
+  defp normalize_props(props) when is_map(props), do: props
+  defp normalize_props(props) when is_list(props), do: Enum.into(props, %{})
+  defp normalize_props(_props), do: %{}
+
+  defp normalize_subject_id(nil), do: nil
+  defp normalize_subject_id(subject_id) when is_binary(subject_id), do: subject_id
+  defp normalize_subject_id(subject_id), do: to_string(subject_id)
+
+  defp resolve_opts(assigns) do
+    []
+    |> maybe_put(:context, Map.get(assigns, :context))
+    |> maybe_put(:domain, Map.get(assigns, :domain))
+  end
+
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
 end

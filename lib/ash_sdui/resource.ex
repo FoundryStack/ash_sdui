@@ -55,7 +55,8 @@ defmodule AshSDUI.Resource do
       ],
       label_key: [
         type: :string,
-        doc: "Gettext message key for the action label (resolved at runtime via configured backend)"
+        doc:
+          "Gettext message key for the action label (resolved at runtime via configured backend)"
       ],
       icon: [
         type: :string,
@@ -64,6 +65,74 @@ defmodule AshSDUI.Resource do
       component_override: [
         type: :string,
         doc: "Optional component name to render this action differently"
+      ],
+      kind: [
+        type: {:one_of, [:link, :event, :submit]},
+        doc: "Default interaction kind when rendering the action"
+      ],
+      to: [
+        type: :string,
+        doc: "Route template or static path for link actions"
+      ],
+      event: [
+        type: :string,
+        doc: "LiveView event name for event actions"
+      ],
+      confirm: [
+        type: {:or, [:boolean, :string]},
+        doc: "Confirmation flag or message for destructive/event actions"
+      ],
+      placement: [
+        type: :atom,
+        doc: "Preferred placement such as :toolbar, :row, :form_footer, or :inline"
+      ],
+      requires_actor?: [
+        type: :boolean,
+        default: false,
+        doc: "Whether this action should be hidden when no actor is present"
+      ],
+      visible_when: [
+        type: :atom,
+        doc: "Named application predicate used by variant resolvers"
+      ]
+    ]
+  }
+
+  @screen %Spark.Dsl.Entity{
+    name: :screen,
+    describe: "Screen-level presentation metadata",
+    examples: ["screen :index, recipe: :card_grid, read_action: :read"],
+    args: [:name],
+    target: AshSDUI.Resource.Screen,
+    schema: [
+      name: [
+        type: :atom,
+        required: true,
+        doc: "Screen name such as :index, :show, :new, or :edit"
+      ],
+      recipe: [
+        type: :atom,
+        doc: "Layout recipe used to render this screen"
+      ],
+      action: [
+        type: :atom,
+        doc: "Ash action backing this screen"
+      ],
+      read_action: [
+        type: :atom,
+        doc: "Read action backing index/show style screens"
+      ],
+      layout: [
+        type: :atom,
+        doc: "Optional named app layout hint"
+      ],
+      title: [
+        type: :string,
+        doc: "Default screen title"
+      ],
+      empty_state: [
+        type: :string,
+        doc: "Default empty state copy"
       ]
     ]
   }
@@ -86,7 +155,8 @@ defmodule AshSDUI.Resource do
       ],
       label_key: [
         type: :string,
-        doc: "Gettext message key for the attribute label (resolved at runtime via configured backend)"
+        doc:
+          "Gettext message key for the attribute label (resolved at runtime via configured backend)"
       ],
       icon: [
         type: :string,
@@ -96,6 +166,49 @@ defmodule AshSDUI.Resource do
         type: :boolean,
         default: false,
         doc: "Whether to hide this attribute by default"
+      ],
+      widget: [
+        type: {:one_of, [:text_input, :textarea, :email, :checkbox, :datetime]},
+        doc: "Preferred form widget when this attribute is rendered in a generated form"
+      ],
+      field_component: [
+        type: :atom,
+        doc: "Optional Phoenix component module used to render this field in generated forms"
+      ],
+      show?: [
+        type: :boolean,
+        doc: "Whether to show this attribute on detail screens"
+      ],
+      index?: [
+        type: :boolean,
+        doc: "Whether to show this attribute on collection screens"
+      ],
+      form?: [
+        type: :boolean,
+        doc: "Whether to show this attribute on form screens"
+      ],
+      filter?: [
+        type: :boolean,
+        default: false,
+        doc: "Whether this attribute can be used as a generated filter"
+      ],
+      sortable?: [
+        type: :boolean,
+        default: false,
+        doc: "Whether this attribute can be used as a generated sort"
+      ],
+      format: [
+        type: :atom,
+        doc: "Named formatter hint such as :relative_datetime, :currency, or :badge"
+      ],
+      empty_state: [
+        type: :string,
+        doc: "Fallback text when this field is blank"
+      ],
+      badge?: [
+        type: :boolean,
+        default: false,
+        doc: "Whether this field prefers badge-style rendering"
       ],
       order: [
         type: :non_neg_integer,
@@ -127,7 +240,7 @@ defmodule AshSDUI.Resource do
         doc: "Gettext domain for label_key lookups (default: \"sdui\")"
       ]
     ],
-    entities: [@ui_action, @ui_attribute]
+    entities: [@screen, @ui_action, @ui_attribute]
   }
 
   use Spark.Dsl.Extension,

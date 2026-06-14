@@ -57,6 +57,19 @@ defmodule AshSDUI.Resource.Info do
     |> Enum.filter(&is_struct(&1, AshSDUI.Resource.UiAction))
   end
 
+  @doc "Reads all `screen` entities from the sdui block, or []."
+  def screens(resource) do
+    (Spark.Dsl.Extension.get_entities(resource, [:sdui]) || [])
+    |> Enum.filter(&is_struct(&1, AshSDUI.Resource.Screen))
+  end
+
+  @doc "Reads a named screen entity from the sdui block."
+  def screen(resource, name) do
+    resource
+    |> screens()
+    |> Enum.find(&(&1.name == name))
+  end
+
   @doc "Reads all `ui_attribute` entities from the sdui block, or []."
   def ui_attributes(resource) do
     (Spark.Dsl.Extension.get_entities(resource, [:sdui]) || [])
@@ -114,11 +127,11 @@ defmodule AshSDUI.Resource.Info do
 
     domain =
       override_domain ||
-        (try do
-           gettext_domain(backend_or_module)
-         rescue
-           _ -> "sdui"
-         end)
+        try do
+          gettext_domain(backend_or_module)
+        rescue
+          _ -> "sdui"
+        end
 
     {backend, domain}
   end

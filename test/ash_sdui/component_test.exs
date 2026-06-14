@@ -48,7 +48,9 @@ defmodule AshSDUI.ComponentTest do
 
   describe "use AshSDUI.Component" do
     test "component exposes metadata functions" do
-      assert "SampleTestComponent@v1" == AshSDUI.Test.SampleTestComponent.__ash_sdui_component_name__()
+      assert "SampleTestComponent@v1" ==
+               AshSDUI.Test.SampleTestComponent.__ash_sdui_component_name__()
+
       assert ["User"] == AshSDUI.Test.SampleTestComponent.__ash_sdui_subject_types__()
     end
   end

@@ -31,7 +31,6 @@ defmodule AshSDUI.Resource.Verifiers.VerifyActionNames do
     raise Spark.Error.DslError,
       path: [:sdui, :ui_action],
       module: resource,
-      message:
-        "ui_action `:#{ui_action.name}` is not defined on resource #{inspect(resource)}"
+      message: "ui_action `:#{ui_action.name}` is not defined on resource #{inspect(resource)}"
   end
 end
