@@ -4,34 +4,39 @@ defmodule SduiDemoWeb.Live.DemoLiveTest do
   import Phoenix.LiveViewTest
 
   describe "demo_live landing page" do
-    test "renders hero section with AshSDUI title", %{conn: conn} do
+    test "renders editorial hero section with AshSDUI title", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
       assert html =~ "AshSDUI"
-      assert html =~ "Server-driven UI"
+      assert html =~ "Server-driven UI for real Phoenix surfaces"
     end
 
-    test "renders feature cards", %{conn: conn} do
+    test "renders product highlights", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
-      assert html =~ "Tree-based layout"
-      assert html =~ "Multi-resource nesting"
-      assert html =~ "i18n via gettext"
-      assert html =~ "Storybook integration"
+      assert html =~ "Screen recipes"
+      assert html =~ "Override-first path"
+      assert html =~ "LiveResource engine"
+      assert html =~ "Storybook parity"
+      assert html =~ "Ash-aware actions"
     end
 
     test "renders navigation links to blog posts", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
       assert html =~ "/posts"
-      assert html =~ "Browse Blog Posts"
+      assert html =~ "/posts/generated"
+      assert html =~ "Open the blog"
+      assert html =~ "Open generated index"
     end
 
-    test "renders how it works section", %{conn: conn} do
+    test "renders refreshed how it works section", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
       assert html =~ "How it works"
-      assert html =~ "AshSDUI.Renderer"
+      assert html =~ "Describe the resource"
+      assert html =~ "Resolve a screen"
+      assert html =~ "Render or override"
     end
   end
 end

@@ -23,18 +23,20 @@ defmodule SduiDemoWeb.Components.UserCard do
                   <img src={@subject.avatar_url} alt={@subject.username} class="rounded-full" />
                 <% else %>
                   <span class="text-lg font-bold">
-                    <%= String.first(@subject.username) |> String.upcase() %>
+                    {String.first(@subject.username) |> String.upcase()}
                   </span>
                 <% end %>
               </div>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="font-semibold text-base truncate"><%= @subject.username %></p>
+              <p class="font-semibold text-base truncate">{@subject.username}</p>
               <%= if @subject.email do %>
-                <p class="text-sm text-base-content/60 truncate"><%= @subject.email %></p>
+                <p class="text-sm text-base-content/60 truncate">{@subject.email}</p>
               <% end %>
             </div>
-            <div class="badge badge-primary badge-outline badge-sm"><%= Map.get(@props, "role", "Author") %></div>
+            <div class="badge badge-primary badge-outline badge-sm">
+              {Map.get(@props, "role", "Author")}
+            </div>
           </div>
         </div>
       <% else %>

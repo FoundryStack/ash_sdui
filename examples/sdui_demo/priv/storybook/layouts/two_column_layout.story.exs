@@ -17,16 +17,14 @@ defmodule SduiDemoWeb.Storybook.Layouts.TwoColumnLayout do
   end
 
   defp build_two_column_tree do
-    AshSDUI.Mock.tree_node("Layouts.TwoColumnLayout@v1",
-      children: [
-        AshSDUI.Mock.tree_node("UserCard@v1",
-          region: :sidebar,
-          subject_resource: "SduiDemo.Accounts.User",
-          subject_id: "first"),
-        AshSDUI.Mock.tree_node("PostCard@v1",
-          region: :main,
-          subject_resource: "SduiDemo.Blog.Post",
-          subject_id: "first")
-      ])
+    root =
+      AshSDUI.Layout.Builder.node("Layouts.TwoColumnLayout@v1",
+        children: [
+          AshSDUI.Layout.Builder.resource(SduiDemo.UI.Resources.UserUI, region: :sidebar),
+          AshSDUI.Layout.Builder.resource(SduiDemo.UI.Resources.PostUI, region: :main)
+        ]
+      )
+
+    AshSDUI.Layout.Builder.to_tree(root)
   end
 end

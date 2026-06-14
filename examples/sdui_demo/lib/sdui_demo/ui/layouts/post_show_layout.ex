@@ -11,7 +11,7 @@ defmodule SduiDemo.UI.Layouts.PostShowLayout do
   - :minimal — PostCard only, no children
   """
 
-  alias AshSDUI.Layout
+  alias AshSDUI.Layout.Builder
 
   @doc """
   Builds and registers an ephemeral layout for a specific post.
@@ -19,9 +19,10 @@ defmodule SduiDemo.UI.Layouts.PostShowLayout do
   Options:
   - `:mode` — :standard | :blog | :minimal (default :standard)
 
-  Returns the layout name: "post-show-standard-<id>", etc.
+  Returns `{layout_name, root}` where the root can be passed straight to
+  `AshSDUI.LiveScreen.assign_layout/3`.
   """
-  def build_and_register(post, comments, opts \\ []) do
+  def build(post, comments, opts \\ []) do
     mode = Keyword.get(opts, :mode, :standard)
     layout_name = "post-show-#{mode}-#{post.id}"
 
@@ -32,118 +33,63 @@ defmodule SduiDemo.UI.Layouts.PostShowLayout do
         :minimal -> minimal_root(post)
       end
 
-    Layout.register(layout_name, %Layout.LayoutDef{
-      name: layout_name,
-      root: root
-    })
+    {layout_name, root}
+  end
 
-    # Invalidate the renderer cache so the new layout is used
-    AshSDUI.Cache.evict(layout_name)
-
-    layout_name
+  def build_and_register(post, comments, opts \\ []) do
+    {layout_name, root} = build(post, comments, opts)
+    Builder.register(layout_name, root)
   end
 
   defp standard_root(post, comments) do
-    author_node = %Layout.Node{
-      id: "post-show-author-#{post.id}",
-      component: "UserCard@v1",
-      bind_subject: :user,
-      region: :author,
-      order: 0,
-      subject_resource: "SduiDemo.Accounts.User",
-      subject_id: to_string(post.author_id),
-      children: []
-    }
-
-    comment_nodes =
-      comments
-      |> Enum.sort_by(& &1.posted_at)
-      |> Enum.with_index()
-      |> Enum.map(fn {comment, index} ->
-        %Layout.Node{
-          id: "post-show-comment-#{comment.id}",
-          component: "CommentItem@v1",
-          bind_subject: nil,
-          region: :comments,
-          order: index,
-          subject_resource: "SduiDemo.Blog.Comment",
-          subject_id: to_string(comment.id),
-          children: []
-        }
-      end)
-
-    %Layout.Node{
+    Builder.resource(SduiDemo.UI.Resources.PostUI,
       id: "post-show-card-#{post.id}",
-      component: "PostCard@v1",
-      bind_subject: :post,
-      region: :default,
-      order: 0,
-      subject_resource: "SduiDemo.Blog.Post",
-      subject_id: to_string(post.id),
-      children: [author_node | comment_nodes]
-    }
+      subject_id: post.id,
+      children: [
+        Builder.resource(SduiDemo.UI.Resources.UserUI,
+          id: "post-show-author-#{post.id}",
+          region: :author,
+          subject_id: post.author_id
+        )
+        | sorted_comment_nodes(comments, "post-show-comment")
+      ]
+    )
   end
 
   defp blog_root(post, comments) do
-    author_node = %Layout.Node{
-      id: "post-blog-author-#{post.id}",
-      component: "UserCard@v1",
-      bind_subject: :user,
-      region: :sidebar,
-      order: 0,
-      subject_resource: "SduiDemo.Accounts.User",
-      subject_id: to_string(post.author_id),
-      children: []
-    }
-
-    comment_nodes =
-      comments
-      |> Enum.sort_by(& &1.posted_at)
-      |> Enum.with_index()
-      |> Enum.map(fn {comment, index} ->
-        %Layout.Node{
-          id: "post-blog-comment-#{comment.id}",
-          component: "CommentItem@v1",
-          bind_subject: nil,
-          region: :comments,
-          order: index,
-          subject_resource: "SduiDemo.Blog.Comment",
-          subject_id: to_string(comment.id),
-          children: []
-        }
-      end)
-
-    post_card = %Layout.Node{
-      id: "post-blog-card-#{post.id}",
-      component: "PostCard@v1",
-      bind_subject: :post,
-      region: :main,
-      order: 0,
-      subject_resource: "SduiDemo.Blog.Post",
-      subject_id: to_string(post.id),
-      children: comment_nodes
-    }
-
-    %Layout.Node{
+    Builder.node("Layouts.TwoColumnLayout@v1",
       id: "post-blog-layout-#{post.id}",
-      component: "Layouts.TwoColumnLayout@v1",
-      bind_subject: nil,
-      region: :default,
-      order: 0,
-      children: [author_node, post_card]
-    }
+      children: [
+        Builder.resource(SduiDemo.UI.Resources.UserUI,
+          id: "post-blog-author-#{post.id}",
+          region: :sidebar,
+          subject_id: post.author_id
+        ),
+        Builder.resource(SduiDemo.UI.Resources.PostUI,
+          id: "post-blog-card-#{post.id}",
+          region: :main,
+          subject_id: post.id,
+          children: sorted_comment_nodes(comments, "post-blog-comment")
+        )
+      ]
+    )
   end
 
   defp minimal_root(post) do
-    %Layout.Node{
+    Builder.resource(SduiDemo.UI.Resources.PostUI,
       id: "post-minimal-card-#{post.id}",
-      component: "PostCard@v1",
-      bind_subject: :post,
-      region: :default,
-      order: 0,
-      subject_resource: "SduiDemo.Blog.Post",
-      subject_id: to_string(post.id),
-      children: []
-    }
+      subject_id: post.id
+    )
+  end
+
+  defp sorted_comment_nodes(comments, prefix) do
+    comments
+    |> Enum.sort_by(& &1.posted_at)
+    |> then(fn sorted_comments ->
+      Builder.resources(SduiDemo.UI.Resources.CommentUI, sorted_comments,
+        id_prefix: prefix,
+        region: :comments
+      )
+    end)
   end
 end

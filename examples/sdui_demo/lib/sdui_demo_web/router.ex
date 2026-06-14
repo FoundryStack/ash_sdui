@@ -3,12 +3,12 @@ defmodule SduiDemoWeb.Router do
   import PhoenixStorybook.Router
 
   pipeline :browser do
-    plug :accepts, ["html"]
-    plug :fetch_session
-    plug :fetch_live_flash
-    plug :put_root_layout, html: {SduiDemoWeb.Layouts, :root}
-    plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug(:accepts, ["html"])
+    plug(:fetch_session)
+    plug(:fetch_live_flash)
+    plug(:put_root_layout, html: {SduiDemoWeb.Layouts, :root})
+    plug(:protect_from_forgery)
+    plug(:put_secure_browser_headers)
   end
 
   scope "/" do
@@ -16,14 +16,15 @@ defmodule SduiDemoWeb.Router do
   end
 
   scope "/", SduiDemoWeb do
-    pipe_through :browser
+    pipe_through(:browser)
 
-    live "/", Live.DemoLive
-    live "/posts", Live.PostsLive
-    live "/posts/new", Live.PostFormLive, :new
-    live "/posts/:id", Live.PostShowLive
-    live "/posts/:id/edit", Live.PostFormLive, :edit
+    live("/", Live.DemoLive)
+    live("/posts", Live.PostsLive)
+    live("/posts/generated", Live.GeneratedPostsLive)
+    live("/posts/new", Live.PostFormLive, :new)
+    live("/posts/:id", Live.PostShowLive)
+    live("/posts/:id/edit", Live.PostFormLive, :edit)
 
-    live_storybook "/storybook", backend_module: SduiDemoWeb.Storybook
+    live_storybook("/storybook", backend_module: SduiDemoWeb.Storybook)
   end
 end

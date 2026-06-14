@@ -15,75 +15,40 @@ defmodule SduiDemo.UI.Layouts.BlogLayout do
   """
 
   alias AshSDUI.Layout
+  alias AshSDUI.Layout.Builder
 
   def register do
-    # Author card shown in sidebar
-    sidebar_author = %Layout.Node{
-      id: "blog-sidebar-author",
-      component: "UserCard@v1",
-      bind_subject: :user,
-      region: :sidebar,
-      order: 0,
-      subject_resource: "SduiDemo.Accounts.User",
-      subject_id: "first",
-      children: []
-    }
-
-    # Author card embedded inside the post (shows who wrote it)
-    post_author = %Layout.Node{
-      id: "blog-post-author",
-      component: "UserCard@v1",
-      bind_subject: :user,
-      region: :author,
-      order: 0,
-      subject_resource: "SduiDemo.Accounts.User",
-      subject_id: "first",
-      children: []
-    }
-
-    # Individual comment items — we embed two demo comment slots
-    comment_1 = %Layout.Node{
-      id: "blog-comment-1",
-      component: "CommentItem@v1",
-      bind_subject: nil,
-      region: :comments,
-      order: 0,
-      subject_resource: "SduiDemo.Blog.Comment",
-      subject_id: "first",
-      children: []
-    }
-
-    comment_2 = %Layout.Node{
-      id: "blog-comment-2",
-      component: "CommentItem@v1",
-      bind_subject: nil,
-      region: :comments,
-      order: 1,
-      subject_resource: "SduiDemo.Blog.Comment",
-      subject_id: "second",
-      children: []
-    }
-
-    # Post card in main area, with nested author + comments
-    post_card = %Layout.Node{
-      id: "blog-post-card",
-      component: "PostCard@v1",
-      bind_subject: :post,
-      region: :main,
-      order: 0,
-      subject_resource: "SduiDemo.Blog.Post",
-      subject_id: "first",
-      children: [post_author, comment_1, comment_2]
-    }
-
-    root = %Layout.Node{
-      id: "blog-root",
-      component: "Layouts.TwoColumnLayout@v1",
-      bind_subject: nil,
-      region: :default,
-      order: 0,
-      children: [sidebar_author, post_card]
-    }
+    root =
+      Builder.node("Layouts.TwoColumnLayout@v1",
+        id: "blog-root",
+        children: [
+          Builder.resource(SduiDemo.UI.Resources.UserUI,
+            id: "blog-sidebar-author",
+            region: :sidebar
+          ),
+          Builder.resource(SduiDemo.UI.Resources.PostUI,
+            id: "blog-post-card",
+            region: :main,
+            children: [
+              Builder.resource(SduiDemo.UI.Resources.UserUI,
+                id: "blog-post-author",
+                region: :author
+              ),
+              Builder.resource(SduiDemo.UI.Resources.CommentUI,
+                id: "blog-comment-1",
+                region: :comments,
+                order: 0
+              ),
+              Builder.resource(SduiDemo.UI.Resources.CommentUI,
+                id: "blog-comment-2",
+                region: :comments,
+                order: 1,
+                subject_id: "second"
+              )
+            ]
+          )
+        ]
+      )
 
     Layout.register("blog-post", %Layout.LayoutDef{
       name: "blog-post",

@@ -17,7 +17,7 @@ defmodule SduiDemoWeb.Components.PostCard do
       <%= if @subject do %>
         <div class="card-body">
           <div class="flex items-start justify-between gap-3 mb-2">
-            <h1 class="card-title text-2xl leading-snug flex-1"><%= @subject.title %></h1>
+            <h1 class="card-title text-2xl leading-snug flex-1">{@subject.title}</h1>
             <%= if @subject.published_at do %>
               <div class="badge badge-success shrink-0">Published</div>
             <% else %>
@@ -27,12 +27,12 @@ defmodule SduiDemoWeb.Components.PostCard do
 
           <%= if @subject.published_at do %>
             <p class="text-xs text-base-content/40 -mt-2 mb-4">
-              <%= Calendar.strftime(@subject.published_at, "%B %d, %Y") %>
+              {Calendar.strftime(@subject.published_at, "%B %d, %Y")}
             </p>
           <% end %>
 
           <div class="prose max-w-none text-base-content/80">
-            <p><%= @subject.body %></p>
+            <p>{@subject.body}</p>
           </div>
 
           <%= if map_size(@children) > 0 && @children[:author] do %>
@@ -41,18 +41,29 @@ defmodule SduiDemoWeb.Components.PostCard do
             </div>
             <div class="author-region">
               <%= for child_rendered <- @children[:author] do %>
-                <%= child_rendered %>
+                {child_rendered}
               <% end %>
             </div>
           <% end %>
 
           <%= if map_size(@children) > 0 && @children[:comments] do %>
             <div class="divider text-xs font-semibold text-base-content/40 uppercase tracking-widest">
-              Comments (<%= length(@children[:comments]) %>)
+              Comments ({length(@children[:comments])})
             </div>
             <div class="comments-region space-y-3">
               <%= for child_rendered <- @children[:comments] do %>
-                <%= child_rendered %>
+                {child_rendered}
+              <% end %>
+            </div>
+          <% end %>
+
+          <%= if map_size(@children) > 0 && @children[:actions] do %>
+            <div class="divider text-xs font-semibold text-base-content/40 uppercase tracking-widest">
+              Actions
+            </div>
+            <div class="actions-region">
+              <%= for child_rendered <- @children[:actions] do %>
+                {child_rendered}
               <% end %>
             </div>
           <% end %>

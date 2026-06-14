@@ -22,12 +22,12 @@ defmodule SduiDemoWeb.Components.Layouts.TwoColumnLayout do
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-6" data-testid="two-column-layout">
         <aside class="sidebar lg:col-span-1 space-y-4">
           <%= for child <- @sidebar_children do %>
-            <%= child %>
+            {child}
           <% end %>
         </aside>
         <main class="main-content lg:col-span-3">
           <%= for child <- @main_children do %>
-            <%= child %>
+            {child}
           <% end %>
         </main>
       </div>

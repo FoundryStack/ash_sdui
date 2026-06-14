@@ -3,19 +3,20 @@ defmodule SduiDemoWeb.Live.MinimalTest do
 
   @expected_components ~w(
     UserCard@v1
-    ActionButton@v1
+    EditorialPostsPage@v1
     Layouts.TwoColumnLayout@v1
-    UserList@v1
     PostCard@v1
     CommentItem@v1
   )
 
   test "persistent_term is populated with all components" do
     key = {AshSDUI.Registry, :components}
-    map = case :persistent_term.get(key, nil) do
-      nil -> flunk("persistent_term not populated")
-      m -> m
-    end
+
+    map =
+      case :persistent_term.get(key, nil) do
+        nil -> flunk("persistent_term not populated")
+        m -> m
+      end
 
     for name <- @expected_components do
       assert name in Map.keys(map), "Expected component #{inspect(name)} to be registered"

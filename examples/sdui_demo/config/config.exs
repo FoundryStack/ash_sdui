@@ -12,4 +12,8 @@ config :sdui_demo, SduiDemoWeb.Endpoint,
 
 config :sdui_demo, :ash_domains, [SduiDemo.Accounts, SduiDemo.Blog]
 
+config :tailwind,
+  version_check: false,
+  path: Path.expand("../assets/node_modules/.bin/tailwindcss", __DIR__)
+
 import_config "#{config_env()}.exs"

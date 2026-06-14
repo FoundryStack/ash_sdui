@@ -48,12 +48,17 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
   end
 
   describe "posts index" do
-    test "lists posts with DaisyUI cards", %{conn: conn, post: post} do
+    test "renders a classic editorial feed instead of a generic table", %{conn: conn, post: post} do
       {:ok, _view, html} = live(conn, "/posts")
 
+      assert html =~ ~s(data-testid="editorial-feed")
+      assert html =~ "Featured story"
+      assert html =~ "More from the feed"
+      assert html =~ "tuned through recipe_overrides"
       assert html =~ post.title
       assert html =~ "Published"
       assert html =~ "Read"
+      refute html =~ "<table"
     end
 
     test "shows empty state when no posts (setup creates demo data)", %{conn: conn} do
@@ -64,11 +69,46 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
     end
 
     test "delete removes post from list", %{conn: conn, post: post} do
+      {:ok, extra_post} =
+        SduiDemo.Blog.Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "Delete Me",
+          body: "Secondary post for delete coverage.",
+          author_id: post.author_id
+        })
+        |> Ash.create()
+
       {:ok, view, _html} = live(conn, "/posts")
 
-      html = view |> element("[phx-click='delete'][phx-value-id='#{post.id}']") |> render_click()
+      view |> element("[phx-click='delete'][phx-value-id='#{extra_post.id}']") |> render_click()
 
-      refute html =~ post.id
+      assert {:error, _reason} = Ash.get(SduiDemo.Blog.Post, extra_post.id, domain: SduiDemo.Blog)
+      assert {:ok, _post} = Ash.get(SduiDemo.Blog.Post, post.id, domain: SduiDemo.Blog)
+    end
+
+    test "shows author and editorial metadata", %{conn: conn, user: user, post: post} do
+      {:ok, _view, html} = live(conn, "/posts")
+
+      assert html =~ user.username
+      assert html =~ post.title
+      assert html =~ "Create Post"
+      assert html =~ "AshSDUI Journal"
+    end
+
+    test "generated index uses the built-in collection recipe with overrides", %{
+      conn: conn,
+      post: post
+    } do
+      {:ok, _view, html} = live(conn, "/posts/generated")
+
+      assert html =~ "Headline"
+      assert html =~ "Published"
+      assert html =~ "Compose Post"
+      assert html =~ "Open"
+      assert html =~ "Revise"
+      assert html =~ post.title
+      assert html =~ "<table"
+      refute html =~ ~s(data-testid="editorial-feed")
     end
   end
 
@@ -159,13 +199,22 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
   end
 
   describe "post form" do
+    test "PostUI form metadata drives generated fields" do
+      fields = AshSDUI.Form.fields(SduiDemo.UI.Resources.PostUI, :create)
+
+      assert Enum.map(fields, & &1.name) == [:title, :body]
+      assert Enum.find(fields, &(&1.name == :body)).widget == :textarea
+    end
+
     test "renders new post form", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/posts/new")
 
       assert html =~ "New Post"
       assert html =~ "Title"
-      assert html =~ "Body"
+      assert html =~ "Content"
+      assert html =~ "custom component"
       assert html =~ "Create Post"
+      assert html =~ "text-3xl"
       # Verify form has proper LiveView event attributes
       assert html =~ "phx-change=\"validate\""
       assert html =~ "phx-submit=\"save\""
@@ -201,13 +250,23 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
       case result do
         {:error, {:live_redirect, %{to: to}}} ->
           assert String.match?(to, ~r|/posts/[a-f0-9\-]+|)
-          post_id = String.slice(to, 7..-1)
+          post_id = String.slice(to, 7..-1//1)
           {:ok, post} = SduiDemo.Blog.Post |> Ash.get(post_id, domain: SduiDemo.Blog)
           assert post.title == "Test Post"
           assert post.body == "Test body"
+
         html when is_binary(html) ->
           assert html =~ "Test Post" or html =~ "created"
       end
+    end
+  end
+
+  describe "landing page" do
+    test "uses the shared page shell with the how it works section", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+
+      assert html =~ "How it works"
+      assert html =~ "Open the blog"
     end
   end
 
@@ -266,6 +325,7 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
       names = Enum.map(actions, & &1.name)
 
       assert :create in names
+      assert :read in names
       assert :publish in names
       assert :destroy in names
     end

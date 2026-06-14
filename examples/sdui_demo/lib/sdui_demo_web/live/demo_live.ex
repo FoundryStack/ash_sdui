@@ -3,24 +3,34 @@ defmodule SduiDemoWeb.Live.DemoLive do
 
   @features [
     %{
-      icon: "🌲",
-      title: "Tree-based layout",
-      desc: "Compose any UI from a JSON tree of nodes. Each node declares its component, region, and Ash subject."
+      icon: "Recipe",
+      title: "Screen recipes",
+      desc:
+        "Start from Ash metadata, then let an app-side recipe shape an editorial page without throwing away the generated flow."
     },
     %{
-      icon: "🔌",
-      title: "Multi-resource nesting",
-      desc: "A PostCard embeds a UserCard (author) and CommentItems — all resolved independently from separate Ash resources."
+      icon: "Generated",
+      title: "Override-first path",
+      desc:
+        "The same metadata can also stay on the built-in recipe path, with copy, labels, and layout polish coming from recipe_overrides alone."
     },
     %{
-      icon: "🌍",
-      title: "i18n via gettext",
-      desc: "Use label_key instead of hardcoded strings. Labels resolve at runtime from .po files with full gettext support."
+      icon: "LiveView",
+      title: "LiveResource engine",
+      desc:
+        "List, show, create, edit, validate, and submit stay conventional, so custom UI work lands on top of the same engine."
     },
     %{
-      icon: "📖",
-      title: "Storybook integration",
-      desc: "Every SDUI component auto-registers a storybook story. Browse components in isolation."
+      icon: "Theme",
+      title: "Storybook parity",
+      desc:
+        "The demo app and Storybook now share the same Tailwind and DaisyUI path, which keeps component previews visually honest."
+    },
+    %{
+      icon: "Actions",
+      title: "Ash-aware actions",
+      desc:
+        "Default resource actions still come from SDUI metadata, but the app decides where they live and how far to customize the surface."
     }
   ]
 
@@ -32,68 +42,11 @@ defmodule SduiDemoWeb.Live.DemoLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div>
-      <div class="hero min-h-64 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-box mb-12">
-        <div class="hero-content text-center max-w-2xl">
-          <div>
-            <div class="text-5xl mb-4">⚡</div>
-            <h1 class="text-4xl font-bold mb-3">AshSDUI Demo</h1>
-            <p class="text-lg text-base-content/70 mb-6">
-              Server-driven UI for Phoenix LiveView, powered by Ash resources.
-              Change layouts without redeployment — the server owns the component tree.
-            </p>
-            <div class="flex flex-wrap gap-3 justify-center">
-              <a href="/posts" class="btn btn-primary btn-lg">
-                Browse Blog Posts
-              </a>
-              <a href="/posts/new" class="btn btn-outline btn-lg">
-                Create a Post
-              </a>
-              <a href="/storybook" class="btn btn-ghost btn-lg">
-                View Storybook
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <h2 class="text-2xl font-bold mb-6 text-center">Key Features</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-        <%= for feature <- @features do %>
-          <div class="card bg-base-100 border border-base-300 shadow-sm">
-            <div class="card-body p-5">
-              <div class="flex items-start gap-4">
-                <div class="text-3xl"><%= feature.icon %></div>
-                <div>
-                  <h3 class="font-semibold text-base mb-1"><%= feature.title %></h3>
-                  <p class="text-sm text-base-content/60"><%= feature.desc %></p>
-                </div>
-              </div>
-            </div>
-          </div>
-        <% end %>
-      </div>
-
-      <div class="card bg-base-200 border border-base-300">
-        <div class="card-body p-6">
-          <h3 class="font-bold text-lg mb-3">How it works</h3>
-          <ol class="steps steps-vertical text-sm">
-            <li class="step step-primary">
-              Ash Resource is annotated with <code class="badge badge-ghost badge-sm">use AshSDUI.Resource</code> or a standalone UI module
-            </li>
-            <li class="step step-primary">
-              A Layout Definition tree is registered: nodes declare component, region, and subject resource+id
-            </li>
-            <li class="step step-primary">
-              At render time, <code class="badge badge-ghost badge-sm">AshSDUI.Renderer.to_tree/1</code> resolves each node's subject from Ash
-            </li>
-            <li class="step step-primary">
-              <code class="badge badge-ghost badge-sm">&lt;SDUIRoot tree=&#123;tree&#125; /&gt;</code> recursively renders the tree via registered Phoenix components
-            </li>
-          </ol>
-        </div>
-      </div>
-    </div>
+    <.demo_page_layout features={@features} />
     """
+  end
+
+  defp demo_page_layout(assigns) do
+    SduiDemoWeb.Components.Layouts.DemoPageLayout.render(assigns)
   end
 end

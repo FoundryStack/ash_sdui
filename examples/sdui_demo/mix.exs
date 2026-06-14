@@ -6,6 +6,7 @@ defmodule SduiDemo.MixProject do
       app: :sdui_demo,
       version: "0.1.0",
       elixir: "~> 1.18",
+      listeners: [Phoenix.CodeReloader],
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: Mix.compilers(),
       start_permanent: Mix.env() == :prod,
@@ -31,9 +32,10 @@ defmodule SduiDemo.MixProject do
       {:ash_phoenix, "~> 2.0"},
       {:phoenix, "~> 1.8"},
       {:phoenix_live_view, "~> 1.0"},
+      {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_storybook, "~> 1.2"},
       {:esbuild, "~> 0.8", runtime: false},
-      {:tailwind, "~> 0.2", runtime: false},
+      {:tailwind, "~> 0.3", runtime: false},
       {:bandit, "~> 1.0"},
       {:jason, "~> 1.4"},
       {:lazy_html, ">= 0.1.0", only: :test},
@@ -44,9 +46,13 @@ defmodule SduiDemo.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "assets.setup", "assets.build"],
-      "assets.setup": ["tailwind.install", "esbuild.install"],
+      "assets.setup": ["cmd --cd assets npm install", "esbuild.install"],
       "assets.build": ["tailwind default", "esbuild default"],
-      "assets.deploy": ["tailwind default", "esbuild default", "phx.digest"]
+      "assets.deploy": [
+        "tailwind default --minify",
+        "esbuild default",
+        "phx.digest"
+      ]
     ]
   end
 end

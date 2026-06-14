@@ -17,26 +17,28 @@ defmodule SduiDemoWeb.Storybook.Layouts.BlogLayout do
   end
 
   defp build_blog_tree do
-    AshSDUI.Mock.tree_node("Layouts.TwoColumnLayout@v1",
-      children: [
-        AshSDUI.Mock.tree_node("UserCard@v1",
-          region: :sidebar,
-          subject_resource: "SduiDemo.Accounts.User",
-          subject_id: "first"),
-        AshSDUI.Mock.tree_node("PostCard@v1",
-          region: :main,
-          subject_resource: "SduiDemo.Blog.Post",
-          subject_id: "first",
-          children: [
-            AshSDUI.Mock.tree_node("CommentItem@v1",
-              region: :comments,
-              subject_resource: "SduiDemo.Blog.Comment",
-              subject_id: "first"),
-            AshSDUI.Mock.tree_node("CommentItem@v1",
-              region: :comments,
-              subject_resource: "SduiDemo.Blog.Comment",
-              subject_id: "second")
-          ])
-      ])
+    root =
+      AshSDUI.Layout.Builder.node("Layouts.TwoColumnLayout@v1",
+        children: [
+          AshSDUI.Layout.Builder.resource(SduiDemo.UI.Resources.UserUI, region: :sidebar),
+          AshSDUI.Layout.Builder.resource(SduiDemo.UI.Resources.PostUI,
+            region: :main,
+            children: [
+              AshSDUI.Layout.Builder.resource(SduiDemo.UI.Resources.CommentUI,
+                id: "comment-1",
+                region: :comments
+              ),
+              AshSDUI.Layout.Builder.resource(SduiDemo.UI.Resources.CommentUI,
+                id: "comment-2",
+                region: :comments,
+                order: 1,
+                subject_id: "second"
+              )
+            ]
+          )
+        ]
+      )
+
+    AshSDUI.Layout.Builder.to_tree(root)
   end
 end

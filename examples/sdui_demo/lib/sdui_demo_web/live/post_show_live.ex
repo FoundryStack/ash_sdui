@@ -5,29 +5,20 @@ defmodule SduiDemoWeb.Live.PostShowLive do
   alias SduiDemo.Blog.{Post, Comment}
   alias SduiDemo.Accounts
   alias SduiDemo.Accounts.User
+  alias AshSDUI.LiveScreen
   alias SduiDemo.UI.Layouts.PostShowLayout
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     case load_post(id) do
       {:ok, post, comments} ->
-        layout_name = PostShowLayout.build_and_register(post, comments, mode: :standard)
-        {:ok, tree} = AshSDUI.Renderer.to_tree(layout_name)
         demo_user = get_demo_user()
-
-        comment_form =
-          Comment
-          |> AshPhoenix.Form.for_create(:create, domain: Blog, as: "comment")
-          |> to_form()
 
         {:ok,
          socket
-         |> assign(:post, post)
-         |> assign(:comments, comments)
-         |> assign(:__sdui_tree__, tree)
-         |> assign(:comment_form, comment_form)
+         |> assign_post_state(post, comments, :standard)
+         |> assign(:comment_form, fresh_comment_form())
          |> assign(:demo_user, demo_user)
-         |> assign(:layout_mode, :standard)
          |> assign(:page_title, post.title)}
 
       :not_found ->
@@ -43,9 +34,8 @@ defmodule SduiDemoWeb.Live.PostShowLive do
     mode = String.to_atom(mode_str)
     post = socket.assigns.post
     comments = socket.assigns.comments
-    layout_name = PostShowLayout.build_and_register(post, comments, mode: mode)
-    {:ok, tree} = AshSDUI.Renderer.to_tree(layout_name)
-    {:noreply, socket |> assign(:__sdui_tree__, tree) |> assign(:layout_mode, mode)}
+
+    {:noreply, assign_post_state(socket, post, comments, mode)}
   end
 
   @impl true
@@ -67,30 +57,15 @@ defmodule SduiDemoWeb.Live.PostShowLive do
 
     case AshPhoenix.Form.submit(socket.assigns.comment_form.source, params: full_params) do
       {:ok, _comment} ->
-        case load_post(to_string(post.id)) do
-          {:ok, updated_post, comments} ->
-            layout_name = PostShowLayout.build_and_register(updated_post, comments, mode: socket.assigns.layout_mode)
-            {:ok, tree} = AshSDUI.Renderer.to_tree(layout_name)
+        case reload_post_state(socket, to_string(post.id), "Comment added!") do
+          {:ok, refreshed_socket} ->
+            {:noreply, assign(refreshed_socket, :comment_form, fresh_comment_form())}
 
-            fresh_form =
-              Comment
-              |> AshPhoenix.Form.for_create(:create, domain: Blog, as: "comment")
-              |> to_form()
-
-            {:noreply,
-             socket
-             |> assign(:post, updated_post)
-             |> assign(:comments, comments)
-             |> assign(:__sdui_tree__, tree)
-             |> assign(:comment_form, fresh_form)
-             |> put_flash(:info, "Comment added!")}
-
-          :not_found ->
-            {:noreply, push_navigate(socket, to: "/posts")}
+          {:error, redirected_socket} ->
+            {:noreply, redirected_socket}
         end
 
       {:error, form} ->
-        IO.inspect(form, label: "Form error")
         {:noreply, assign(socket, :comment_form, to_form(form))}
     end
   end
@@ -101,19 +76,9 @@ defmodule SduiDemoWeb.Live.PostShowLive do
 
     case Ash.update(post, %{}, action: :publish, domain: Blog) do
       {:ok, updated_post} ->
-        case load_post(to_string(updated_post.id)) do
-          {:ok, post, comments} ->
-            layout_name = PostShowLayout.build_and_register(post, comments, mode: socket.assigns.layout_mode)
-            {:ok, tree} = AshSDUI.Renderer.to_tree(layout_name)
-
-            {:noreply,
-             socket
-             |> assign(:post, post)
-             |> assign(:__sdui_tree__, tree)
-             |> put_flash(:info, "Post published!")}
-
-          :not_found ->
-            {:noreply, push_navigate(socket, to: "/posts")}
+        case reload_post_state(socket, to_string(updated_post.id), "Post published!") do
+          {:ok, refreshed_socket} -> {:noreply, refreshed_socket}
+          {:error, redirected_socket} -> {:noreply, redirected_socket}
         end
 
       {:error, _} ->
@@ -147,50 +112,51 @@ defmodule SduiDemoWeb.Live.PostShowLive do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
+  defp fresh_comment_form do
+    Comment
+    |> AshPhoenix.Form.for_create(:create, domain: Blog, as: "comment")
+    |> to_form()
+  end
+
+  defp reload_post_state(socket, post_id, flash_message) do
+    case load_post(post_id) do
+      {:ok, post, comments} ->
+        {:ok,
+         socket
+         |> assign_post_state(post, comments, socket.assigns.layout_mode)
+         |> put_flash(:info, flash_message)}
+
+      :not_found ->
+        {:error, push_navigate(socket, to: "/posts")}
+    end
+  end
+
+  defp assign_post_state(socket, post, comments, mode) do
+    {layout_name, root} = PostShowLayout.build(post, comments, mode: mode)
+
+    socket
+    |> assign(:post, post)
+    |> assign(:comments, comments)
+    |> assign(:layout_mode, mode)
+    |> LiveScreen.assign_layout(layout_name, root)
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
-    <div>
-      <div class="flex items-center gap-3 mb-6">
-        <a href="/posts" class="btn btn-ghost btn-sm">← All Posts</a>
-        <div class="flex-1" />
-        <a href={"/posts/#{@post.id}/edit"} class="btn btn-outline btn-sm">Edit</a>
-        <%= if !@post.published_at do %>
-          <button phx-click="publish" class="btn btn-success btn-sm">Publish</button>
-        <% end %>
-      </div>
+    <div class="space-y-8">
+      <.post_show_action_bar post={@post} layout_mode={@layout_mode} />
 
-      <div class="tabs tabs-boxed mb-6">
-        <button
-          phx-click="switch_layout"
-          phx-value-mode="standard"
-          class={["tab", @layout_mode == :standard && "tab-active"]}
-        >
-          Standard
-        </button>
-        <button
-          phx-click="switch_layout"
-          phx-value-mode="blog"
-          class={["tab", @layout_mode == :blog && "tab-active"]}
-        >
-          Blog
-        </button>
-        <button
-          phx-click="switch_layout"
-          phx-value-mode="minimal"
-          class={["tab", @layout_mode == :minimal && "tab-active"]}
-        >
-          Minimal
-        </button>
-      </div>
-
-      <%!-- SDUI renders the post display in selected layout mode --%>
       <.sdui_root tree={@__sdui_tree__} />
 
-      <%!-- Comment form — native Phoenix, not SDUI (forms are not server-driven) --%>
-      <div class="mt-8">
-        <div class="divider">Add a comment</div>
-        <div class="card bg-base-100 shadow border border-base-300 max-w-2xl">
+      <section class="space-y-4">
+        <div class="space-y-1">
+          <h2 class="text-2xl font-semibold text-base-content">Add a comment</h2>
+          <p class="text-sm text-base-content/65">
+            The show page stays custom on purpose, which makes it a good example of how generated and hand-shaped flows can live together.
+          </p>
+        </div>
+        <div class="card max-w-2xl border border-base-300 bg-base-100 shadow-sm">
           <div class="card-body">
             <form phx-change="validate_comment" phx-submit="submit_comment" class="space-y-4">
               <fieldset class="fieldset">
@@ -202,7 +168,7 @@ defmodule SduiDemoWeb.Live.PostShowLive do
                   phx-debounce="300"
                 ><%= Phoenix.HTML.Form.input_value(@comment_form, :body) %></textarea>
                 <%= for error <- @comment_form[:body].errors do %>
-                  <p class="label text-error text-xs"><%= translate_error(error) %></p>
+                  <p class="label text-error text-xs">{translate_error(error)}</p>
                 <% end %>
               </fieldset>
               <div class="flex justify-end">
@@ -211,9 +177,13 @@ defmodule SduiDemoWeb.Live.PostShowLive do
             </form>
           </div>
         </div>
-      </div>
+      </section>
     </div>
     """
+  end
+
+  defp post_show_action_bar(assigns) do
+    SduiDemoWeb.Components.Layouts.PostShowActionBar.render(assigns)
   end
 
   defp sdui_root(assigns) do

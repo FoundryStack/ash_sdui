@@ -6,29 +6,28 @@
     <meta name="csrf-token" content={Phoenix.Controller.get_csrf_token()} />
     <title>SDUI Demo Blog</title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
   </head>
-  <body class="min-h-screen bg-base-200">
-    <nav class="navbar bg-base-100 shadow-sm border-b border-base-300">
-      <div class="navbar-start">
-        <a href="/" class="btn btn-ghost text-xl font-bold">
-          <span class="text-primary">⚡</span> AshSDUI Blog
+  <body>
+    <nav class="border-b border-base-300 bg-base-100/95 backdrop-blur">
+      <div class="mx-auto flex min-h-20 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+        <a href="/" class="flex items-center gap-3 text-base-content">
+          <span class="flex size-10 items-center justify-center rounded-full bg-primary/12 text-lg text-primary">
+            ✦
+          </span>
+          <span class="flex flex-col">
+            <span class="text-sm font-medium uppercase tracking-[0.2em] text-base-content/55">
+              Demo
+            </span>
+            <span class="text-lg font-semibold">AshSDUI Blog</span>
+          </span>
         </a>
-      </div>
-      <div class="navbar-center hidden lg:flex">
-        <ul class="menu menu-horizontal px-1 gap-1">
-          <li><a href="/" class="font-medium">Home</a></li>
-          <li><a href="/posts" class="font-medium">Posts</a></li>
-        </ul>
-      </div>
-      <div class="navbar-end">
-        <a href="/posts/new" class="btn btn-primary btn-sm">
-          + New Post
-        </a>
-        <a href="/storybook" class="btn btn-ghost btn-sm ml-2">
-          Storybook
-        </a>
+        <div class="hidden items-center gap-2 md:flex">
+          <a href="/" class="btn btn-ghost btn-sm">Home</a>
+          <a href="/posts" class="btn btn-ghost btn-sm">Journal</a>
+          <a href="/storybook" class="btn btn-ghost btn-sm">Storybook</a>
+          <a href="/posts/new" class="btn btn-primary btn-sm">New Post</a>
+        </div>
       </div>
     </nav>
 
