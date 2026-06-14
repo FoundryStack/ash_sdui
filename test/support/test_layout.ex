@@ -5,7 +5,6 @@ defmodule AshSDUI.Test.TestLayout do
     header_node = %Layout.Node{
       id: :header,
       component: "UserProfile.Header@v1",
-      bind_subject: :self,
       region: :sidebar,
       order: 0,
       children: []
@@ -14,7 +13,6 @@ defmodule AshSDUI.Test.TestLayout do
     body_node = %Layout.Node{
       id: :body,
       component: "Betting.ActiveBets@v1",
-      bind_subject: :bets,
       region: :main,
       order: 1,
       children: []
@@ -23,7 +21,6 @@ defmodule AshSDUI.Test.TestLayout do
     root_node = %Layout.Node{
       id: :root,
       component: "Layouts.TwoColumn@v1",
-      bind_subject: :self,
       region: :default,
       order: 0,
       children: [header_node, body_node]

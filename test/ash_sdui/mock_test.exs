@@ -3,6 +3,8 @@ defmodule AshSDUI.MockTest do
 
   alias AshSDUI.Mock
   alias AshSDUI.Renderer.TreeNode
+  alias AshSDUI.TestFixtures.MockPlayerResource
+  alias AshSDUI.TestFixtures.MockResourceWithoutComponent
 
   describe "tree_node/2" do
     test "creates a minimal tree node with defaults" do
@@ -31,10 +33,11 @@ defmodule AshSDUI.MockTest do
     end
 
     test "accepts subject_resource and subject_id" do
-      node = Mock.tree_node("Card@v1",
-        subject_resource: "MyApp.Player",
-        subject_id: "player-123"
-      )
+      node =
+        Mock.tree_node("Card@v1",
+          subject_resource: "MyApp.Player",
+          subject_id: "player-123"
+        )
 
       assert node.subject_resource == "MyApp.Player"
       assert node.subject_id == "player-123"
@@ -64,48 +67,29 @@ defmodule AshSDUI.MockTest do
   end
 
   describe "from_resource/2" do
-    setup do
-      # Create a test resource with sdui annotation
-      defmodule TestPlayer do
-        use Ash.Resource, domain: nil, extensions: [AshSDUI.Resource]
-
-        sdui do
-          default_component "Player.Card@v1"
-        end
-      end
-
-      {:ok, resource: TestPlayer}
-    end
-
-    test "builds tree node from resource with default_component", %{resource: resource} do
-      node = Mock.from_resource(resource)
+    test "builds tree node from resource with default_component" do
+      node = Mock.from_resource(MockPlayerResource)
 
       assert node.component_name == "Player.Card@v1"
-      assert node.subject_resource == to_string(resource)
+      assert node.subject_resource == to_string(MockPlayerResource)
       assert node.subject_id == "first"
     end
 
-    test "accepts custom subject_id", %{resource: resource} do
-      node = Mock.from_resource(resource, subject_id: "player-42")
+    test "accepts custom subject_id" do
+      node = Mock.from_resource(MockPlayerResource, subject_id: "player-42")
 
       assert node.subject_id == "player-42"
     end
 
-    test "accepts custom component_name override", %{resource: resource} do
-      node = Mock.from_resource(resource, component_name: "Custom.Component@v2")
+    test "accepts custom component_name override" do
+      node = Mock.from_resource(MockPlayerResource, component_name: "Custom.Component@v2")
 
       assert node.component_name == "Custom.Component@v2"
     end
 
     test "raises if no default_component and no override" do
-      defmodule TestResourceNoComponent do
-        use Ash.Resource, domain: nil, extensions: [AshSDUI.Resource]
-        sdui do
-        end
-      end
-
       assert_raise ArgumentError, ~r/Pass :component_name or annotate resource/, fn ->
-        Mock.from_resource(TestResourceNoComponent)
+        Mock.from_resource(MockResourceWithoutComponent)
       end
     end
   end
