@@ -1,6 +1,6 @@
+_build/
+.elixir_ls/
+.hex-docs/
 .specstory/
 .vscode/
-.elixir_ls/
-_build/
 deps/
-docs/
