@@ -16,13 +16,31 @@ defmodule SduiDemo.UI.Resources.UserUI do
     default_component("UserCard@v1")
     gettext_backend(SduiDemo.Gettext)
 
-    ui_action(:create, intent: :primary, label_key: "user.action.create", icon: "user-plus")
-    ui_action(:read, intent: :secondary, label: "View", icon: "eye")
-    ui_action(:update, intent: :secondary, label_key: "user.action.update", icon: "pencil")
-    ui_action(:destroy, intent: :destructive, label_key: "user.action.destroy", icon: "trash")
+    view(:index, recipe: :collection, read_action: :read, title: "Users")
+    view(:show, recipe: :detail, read_action: :read)
 
-    ui_attribute(:username, label_key: "user.username", order: 1, widget: :text_input)
-    ui_attribute(:email, label_key: "user.email", order: 2, widget: :email)
-    ui_attribute(:avatar_url, label_key: "user.avatar_url", order: 3, hidden: true)
+    ui_binding(:collection, source: {:resource, SduiDemo.Accounts.User}, many?: true)
+    ui_binding(:record, source: {:resource, SduiDemo.Accounts.User}, many?: false)
+
+    ui_intent(:create,
+      style: :primary,
+      label_key: "user.action.create",
+      icon: "user-plus",
+      target: {:navigate, "/users/new"}
+    )
+
+    ui_intent(:read,
+      style: :secondary,
+      label: "View",
+      icon: "eye",
+      target: {:navigate, "/users/:id"}
+    )
+
+    ui_intent(:update, style: :secondary, label_key: "user.action.update", icon: "pencil")
+    ui_intent(:destroy, style: :destructive, label_key: "user.action.destroy", icon: "trash")
+
+    ui_field(:username, label_key: "user.username", order: 1, widget: :text_input)
+    ui_field(:email, label_key: "user.email", order: 2, widget: :email)
+    ui_field(:avatar_url, label_key: "user.avatar_url", order: 3, hidden: true)
   end
 end

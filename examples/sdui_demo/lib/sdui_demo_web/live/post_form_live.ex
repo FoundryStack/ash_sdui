@@ -1,7 +1,7 @@
 defmodule SduiDemoWeb.Live.PostFormLive do
   use AshSDUI.LiveResource,
-    resource: SduiDemo.UI.Resources.PostUI,
-    screen: :new,
+    ui: SduiDemo.UI.Resources.PostUI,
+    view: :new,
     domain: SduiDemo.Blog
 
   alias SduiDemo.Accounts
@@ -13,7 +13,16 @@ defmodule SduiDemoWeb.Live.PostFormLive do
   @impl true
   def mount(params, session, socket) do
     mode = socket.assigns.live_action
-    AshSDUI.LiveResource.mount_resource(__MODULE__, @resource_ui, mode, live_resource_opts(mode), params, session, socket)
+
+    AshSDUI.LiveResource.mount_resource(
+      __MODULE__,
+      @resource_ui,
+      mode,
+      live_resource_opts(mode),
+      params,
+      session,
+      socket
+    )
   end
 
   def ash_sdui_load_assigns(_mode, _params, socket) do
@@ -23,7 +32,7 @@ defmodule SduiDemoWeb.Live.PostFormLive do
     }
   end
 
-  def ash_sdui_screen_opts(mode, _params, _session, _socket) do
+  def ash_sdui_view_opts(mode, _params, _session, _socket) do
     [
       recipe_overrides: [
         title: page_title(mode)
@@ -57,11 +66,11 @@ defmodule SduiDemoWeb.Live.PostFormLive do
   def render(assigns) do
     ~H"""
     <.post_form_page_layout
-      page_title={@ash_sdui_screen.assigns.title}
+      page_title={@ash_sdui_view.assigns.title}
       form={@form}
-      fields={@ash_sdui_screen.fields}
+      fields={@ash_sdui_view.fields}
       live_action={@live_action}
-      post={@post}
+      post={@subject || @post}
     />
     """
   end
@@ -83,7 +92,7 @@ defmodule SduiDemoWeb.Live.PostFormLive do
   defp success_message(:edit), do: "Post updated."
 
   defp live_resource_opts(mode) do
-    [resource: @resource_ui, screen: mode, domain: @domain]
+    [ui: @resource_ui, view: mode, domain: @domain]
   end
 
   defp post_form_page_layout(assigns) do

@@ -13,11 +13,17 @@ defmodule SduiDemo.UI.Resources.CommentUI do
     default_component("CommentItem@v1")
     gettext_backend(SduiDemo.Gettext)
 
-    ui_action(:create, intent: :primary, label_key: "comment.action.create", icon: "message-plus")
-    ui_action(:update, intent: :secondary, label_key: "comment.action.update", icon: "pencil")
-    ui_action(:destroy, intent: :destructive, label_key: "comment.action.destroy", icon: "trash")
+    view(:index, recipe: :collection, read_action: :read, title: "Comments")
+    view(:show, recipe: :detail, read_action: :read)
 
-    ui_attribute(:body, label_key: "comment.body", order: 1, widget: :textarea)
-    ui_attribute(:posted_at, label_key: "comment.posted_at", order: 2)
+    ui_binding(:collection, source: {:resource, SduiDemo.Blog.Comment}, many?: true)
+    ui_binding(:record, source: {:resource, SduiDemo.Blog.Comment}, many?: false)
+
+    ui_intent(:create, style: :primary, label_key: "comment.action.create", icon: "message-plus")
+    ui_intent(:update, style: :secondary, label_key: "comment.action.update", icon: "pencil")
+    ui_intent(:destroy, style: :destructive, label_key: "comment.action.destroy", icon: "trash")
+
+    ui_field(:body, label_key: "comment.body", order: 1, widget: :textarea)
+    ui_field(:posted_at, label_key: "comment.posted_at", order: 2)
   end
 end

@@ -1,10 +1,10 @@
 defmodule SduiDemoWeb.Live.GeneratedPostsLive do
   use AshSDUI.LiveResource,
-    resource: SduiDemo.UI.Resources.PostUI,
-    screen: :index,
+    ui: SduiDemo.UI.Resources.PostUI,
+    view: :index,
     domain: SduiDemo.Blog
 
-  def ash_sdui_screen_opts(_mode, _params, _session, _socket) do
+  def ash_sdui_view_opts(_mode, _params, _session, _socket) do
     [
       recipe: :collection,
       assigns: %{layout: nil},
@@ -18,7 +18,7 @@ defmodule SduiDemoWeb.Live.GeneratedPostsLive do
           title: %{label: "Headline"},
           published_at: %{label: "Published"}
         },
-        actions: %{
+        intents: %{
           create: %{label: "Compose Post"},
           read: %{label: "Open"},
           update: %{label: "Revise"}

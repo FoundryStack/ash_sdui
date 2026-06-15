@@ -13,65 +13,81 @@ defmodule SduiDemo.UI.Resources.PostUI do
     default_component("PostCard@v1")
     gettext_backend(SduiDemo.Gettext)
 
-    screen(:index,
+    view(:index,
       recipe: :editorial_blog,
       read_action: :read,
       layout: :sdui,
-      title: "AshSDUI Journal"
+      title: "AshSDUI Journal",
+      query: :default
     )
-    screen(:show, recipe: :detail, read_action: :read)
-    screen(:new, recipe: :form, action: :create)
-    screen(:edit, recipe: :form, action: :update)
 
-    ui_action(:create,
-      intent: :primary,
+    view(:show, recipe: :detail, read_action: :read)
+    view(:new, recipe: :form, action: :create)
+    view(:edit, recipe: :form, action: :update)
+
+    ui_query(:default,
+      search: [:title, :body],
+      sort: [:title, :published_at],
+      filters: [:title],
+      default_sort: [published_at: :desc],
+      default_limit: 10
+    )
+
+    ui_binding(:collection, source: {:resource, SduiDemo.Blog.Post}, many?: true, query: :default)
+    ui_binding(:record, source: {:resource, SduiDemo.Blog.Post}, many?: false, default: %{})
+
+    ui_intent(:create,
+      style: :primary,
       label_key: "post.action.create",
       icon: "file-plus",
-      kind: :link,
-      to: "/posts/new",
+      target: {:navigate, "/posts/new"},
       placement: :toolbar
     )
 
-    ui_action(:read,
-      intent: :primary,
+    ui_intent(:read,
+      style: :primary,
       label: "Read",
       icon: "book-open",
-      kind: :link,
-      to: "/posts/:id",
+      target: {:navigate, "/posts/:id"},
       placement: :row
     )
 
-    ui_action(:update,
-      intent: :secondary,
+    ui_intent(:update,
+      style: :secondary,
       label_key: "post.action.update",
       icon: "pencil",
-      kind: :link,
-      to: "/posts/:id/edit",
+      target: {:navigate, "/posts/:id/edit"},
       placement: :row
     )
 
-    ui_action(:publish, intent: :info, label_key: "post.action.publish", icon: "send")
+    ui_intent(:publish,
+      style: :info,
+      label_key: "post.action.publish",
+      icon: "send",
+      target: {:event, "publish"}
+    )
 
-    ui_action(:destroy,
-      intent: :destructive,
+    ui_intent(:destroy,
+      style: :destructive,
       label_key: "post.action.destroy",
       icon: "trash",
-      kind: :event,
-      event: "delete",
+      target: {:event, "delete"},
       confirm: "Delete this post?",
       placement: :row
     )
 
-    ui_attribute(:title,
+    ui_field(:title,
       label_key: "post.title",
       order: 1,
       widget: :text_input,
       index?: true,
       show?: true,
-      form?: true
+      form?: true,
+      filter?: true,
+      sortable?: true
     )
 
-    ui_attribute(:body,
+    ui_field(:body,
       label_key: "post.body",
       order: 2,
       widget: :textarea,
@@ -81,13 +97,14 @@ defmodule SduiDemo.UI.Resources.PostUI do
       form?: true
     )
 
-    ui_attribute(:published_at,
+    ui_field(:published_at,
       label_key: "post.published_at",
       order: 3,
       hidden: false,
       index?: true,
       show?: true,
-      form?: false
+      form?: false,
+      sortable?: true
     )
   end
 end

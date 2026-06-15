@@ -100,8 +100,7 @@ defmodule AshSDUI.Query do
     opts
     |> maybe_put_keyword(:filter, ash_filter(query))
     |> maybe_put_keyword(:sort, ash_sort(query))
-    |> maybe_put_keyword(:limit, query.limit)
-    |> maybe_put_keyword(:offset, query.offset)
+    |> maybe_put_keyword(:page, ash_page(query))
   end
 
   defp query_schema(query) do
@@ -142,6 +141,14 @@ defmodule AshSDUI.Query do
 
   defp ash_sort(%__MODULE__{sort: []}), do: nil
   defp ash_sort(%__MODULE__{sort: sort}), do: sort
+
+  defp ash_page(%__MODULE__{limit: nil, offset: nil}), do: nil
+
+  defp ash_page(%__MODULE__{} = query) do
+    []
+    |> maybe_put_page_opt(:limit, query.limit)
+    |> maybe_put_page_opt(:offset, query.offset)
+  end
 
   defp normalize_filters(params, schema) do
     declared = normalize_atom_list(Map.get(schema, :filters, []))
@@ -227,6 +234,9 @@ defmodule AshSDUI.Query do
 
   defp maybe_put_keyword(opts, _key, nil), do: opts
   defp maybe_put_keyword(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp maybe_put_page_opt(opts, _key, nil), do: opts
+  defp maybe_put_page_opt(opts, key, value), do: Keyword.put(opts, key, value)
 
   defp maybe_reset_offset(params, event) when event in [:search, :filter, :sort] do
     Map.delete(params, "offset")

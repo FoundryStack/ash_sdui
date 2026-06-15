@@ -1,10 +1,10 @@
 defmodule SduiDemoWeb.Live.PostsLive do
   use AshSDUI.LiveResource,
-    resource: SduiDemo.UI.Resources.PostUI,
-    screen: :index,
+    ui: SduiDemo.UI.Resources.PostUI,
+    view: :index,
     domain: SduiDemo.Blog
 
-  def ash_sdui_screen_opts(_mode, _params, _session, _socket) do
+  def ash_sdui_view_opts(_mode, _params, _session, _socket) do
     [
       recipe_overrides: [
         title: "AshSDUI Journal",
@@ -12,7 +12,7 @@ defmodule SduiDemoWeb.Live.PostsLive do
           title: "No posts yet",
           body: "Create your first entry to see the editorial recipe in action."
         ],
-        screen: [
+        view: [
           props: %{
             subtitle:
               "A generated index shaped by an app-side recipe, tuned through recipe_overrides.",

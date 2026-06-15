@@ -14,6 +14,11 @@ defmodule SduiDemoWeb.Components.ResourceForm do
   slot(:footer)
 
   def render(assigns) do
-    AshSDUI.Components.ResourceForm.render(assigns)
+    assigns =
+      assigns
+      |> assign(:ui, assigns.resource)
+      |> assign_new(:fields, fn -> AshSDUI.Form.fields(assigns.resource, assigns.action) end)
+
+    AshSDUI.Components.RecordForm.render(assigns)
   end
 end

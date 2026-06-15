@@ -342,7 +342,7 @@ defmodule AshSDUI.View do
   defp view_recipe(_view, :edit), do: :form
   defp view_recipe(_view, mode), do: mode
 
-  defp default_field_binding(mode) when mode in [:index], do: :collection
+  defp default_field_binding(mode) when mode in [:index], do: nil
   defp default_field_binding(_mode), do: :record
 
   defp hidden_for_mode?(field, mode) do

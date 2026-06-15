@@ -22,6 +22,8 @@ defmodule AshSDUI.Storybook do
   """
 
   defmacro __using__(opts) do
+    normalized_opts = normalize_macro_opts(opts, __CALLER__)
+
     quote do
       if Code.ensure_loaded?(PhoenixStorybook.Story) do
         use PhoenixStorybook.Story, :component
@@ -33,7 +35,7 @@ defmodule AshSDUI.Storybook do
           [
             %Variation{
               id: :default,
-              attributes: AshSDUI.Storybook.story_assigns(unquote(Macro.escape(opts)))
+              attributes: AshSDUI.Storybook.story_assigns(unquote(Macro.escape(normalized_opts)))
             }
           ]
         end
@@ -103,4 +105,25 @@ defmodule AshSDUI.Storybook do
 
   defp maybe_put(opts, _key, nil), do: opts
   defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp normalize_macro_opts(opts, env) do
+    Enum.map(opts, fn
+      {key, value} -> {key, normalize_macro_value(value, env)}
+      other -> other
+    end)
+  end
+
+  defp normalize_macro_value(value, env) do
+    value
+    |> Macro.expand(env)
+    |> then(fn expanded ->
+      try do
+        case Code.eval_quoted(expanded, [], env) do
+          {result, _binding} -> result
+        end
+      rescue
+        _ -> expanded
+      end
+    end)
+  end
 end

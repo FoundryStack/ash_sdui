@@ -13,7 +13,7 @@ defmodule SduiDemoWeb.Endpoint do
   )
 
   if code_reloading? do
-    socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
+    socket("/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket)
   end
 
   plug(Plug.Static,

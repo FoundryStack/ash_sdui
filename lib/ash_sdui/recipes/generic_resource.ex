@@ -121,7 +121,8 @@ defmodule AshSDUI.Recipes.GenericResource do
       sortable?: field.sortable?,
       format: field.format,
       empty_state: field.empty_state,
-      badge?: field.badge?
+      badge?: field.badge?,
+      binding: field.binding
     }
   end
 

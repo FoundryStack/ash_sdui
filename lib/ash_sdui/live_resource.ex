@@ -44,6 +44,11 @@ defmodule AshSDUI.LiveResource do
       end
 
       @impl true
+      def handle_params(params, uri, socket) do
+        AshSDUI.LiveResource.handle_resource_params(__MODULE__, params, uri, socket)
+      end
+
+      @impl true
       def render(assigns) do
         AshSDUI.LiveResource.render_resource(assigns)
       end
@@ -59,6 +64,7 @@ defmodule AshSDUI.LiveResource do
 
       defoverridable mount: 3,
                      handle_event: 3,
+                     handle_params: 3,
                      render: 1,
                      ash_sdui_context: 3,
                      ash_sdui_transform_form_params: 3,
@@ -72,6 +78,7 @@ defmodule AshSDUI.LiveResource do
   import Phoenix.LiveView
 
   alias AshSDUI.Context
+  alias AshSDUI.Query
   alias AshSDUI.View
 
   def mount_resource(owner, ui, mode, opts, params, session, socket) do
@@ -106,6 +113,9 @@ defmodule AshSDUI.LiveResource do
        |> assign(:ash_sdui_view, runtime_view)
        |> assign(:ash_sdui_mode, mode)
        |> assign(:ash_sdui_opts, opts)
+       |> assign(:ash_sdui_session, session)
+       |> assign(:ash_sdui_params, params)
+       |> assign_new(:ash_sdui_uri, fn -> nil end)
        |> assign(:page_title, runtime_view.assigns[:title])
        |> maybe_assign_layout(runtime_view)
        |> then(&assign_hook_assigns(owner, mode, params, &1))}
@@ -116,8 +126,29 @@ defmodule AshSDUI.LiveResource do
          |> assign(:ash_sdui_error, reason)
          |> assign(:ash_sdui_view, nil)
          |> assign(:ash_sdui_mode, mode)
-         |> assign(:ash_sdui_opts, opts)}
+         |> assign(:ash_sdui_opts, opts)
+         |> assign(:ash_sdui_session, session)
+         |> assign(:ash_sdui_params, params)}
     end
+  end
+
+  def handle_resource_params(owner, params, uri, %{assigns: %{ash_sdui_ui: ui}} = socket)
+      when not is_nil(ui) do
+    mode = socket.assigns.ash_sdui_mode
+    opts = socket.assigns.ash_sdui_opts
+    session = socket.assigns[:ash_sdui_session] || %{}
+
+    case refresh_resource(owner, ui, mode, opts, params, session, socket) do
+      {:ok, refreshed} ->
+        {:noreply, assign(refreshed, :ash_sdui_uri, uri)}
+
+      {:error, reason} ->
+        {:noreply, assign(socket, :ash_sdui_error, reason) |> assign(:ash_sdui_uri, uri)}
+    end
+  end
+
+  def handle_resource_params(_owner, _params, uri, socket) do
+    {:noreply, assign(socket, :ash_sdui_uri, uri)}
   end
 
   def handle_resource_event(_owner, "validate", params, socket) do
@@ -125,6 +156,28 @@ defmodule AshSDUI.LiveResource do
     form_params = Map.get(params, form_name, %{})
     form = ash_phoenix_form!().validate(socket.assigns.form.source, form_params)
     {:noreply, assign(socket, :form, Phoenix.Component.to_form(form))}
+  end
+
+  def handle_resource_event(_owner, "query", params, %{assigns: %{ash_sdui_view: view}} = socket) do
+    {:noreply, patch_query(socket, Query.update(view.state.query, :params, params))}
+  end
+
+  def handle_resource_event(_owner, "sort", %{"field" => field} = params, socket) do
+    query = socket.assigns.ash_sdui_view.state.query
+    direction = next_sort_direction(query, field, Map.get(params, "direction"))
+
+    {:noreply,
+     patch_query(socket, Query.update(query, :sort, %{"sort" => sort_param(field, direction)}))}
+  end
+
+  def handle_resource_event(_owner, "paginate", %{"offset" => offset}, socket) do
+    query = socket.assigns.ash_sdui_view.state.query
+    {:noreply, patch_query(socket, Query.update(query, :paginate, %{"offset" => offset}))}
+  end
+
+  def handle_resource_event(_owner, "reset_query", _params, socket) do
+    query = socket.assigns.ash_sdui_view.state.query
+    {:noreply, patch_query(socket, Query.update(query, :reset, %{}))}
   end
 
   def handle_resource_event(owner, "save", params, socket) do
@@ -356,7 +409,9 @@ defmodule AshSDUI.LiveResource do
   defp reload_index(
          %{assigns: %{ash_sdui_mode: :index, ash_sdui_view: view, ash_sdui_opts: opts}} = socket
        ) do
-    case load_bindings(view, opts, %{}) do
+    params = socket.assigns[:ash_sdui_params] || %{}
+
+    case load_bindings(view, opts, params) do
       {:ok, bindings} ->
         view = enrich_view(view, bindings)
 
@@ -514,6 +569,42 @@ defmodule AshSDUI.LiveResource do
     |> then(&assign(socket, &1))
   end
 
+  defp refresh_resource(owner, ui, mode, opts, params, session, socket) do
+    context = context_from(owner, opts, params, session, socket)
+    runtime_view_opts = owner.ash_sdui_view_opts(mode, params, session, socket)
+
+    view_opts =
+      opts
+      |> Keyword.take([
+        :recipe,
+        :variant_resolvers,
+        :field_overrides,
+        :intent_overrides,
+        :recipe_overrides,
+        :assigns
+      ])
+      |> Keyword.merge(runtime_view_opts)
+      |> Keyword.put(:context, context)
+      |> Keyword.put(:params, params)
+
+    with {:ok, view} <- View.resolve(ui, mode, view_opts),
+         {:ok, bindings} <- load_bindings(view, opts, params),
+         runtime_view = enrich_view(view, bindings),
+         {:ok, socket} <- assign_data(socket, runtime_view, bindings, opts, params) do
+      {:ok,
+       socket
+       |> assign(:ash_sdui_resource, runtime_view.resource)
+       |> assign(:ash_sdui_bindings, bindings)
+       |> assign(:ash_sdui_context, runtime_view.context)
+       |> assign(:ash_sdui_state, runtime_view.state)
+       |> assign(:ash_sdui_view, runtime_view)
+       |> assign(:ash_sdui_params, params)
+       |> assign(:page_title, runtime_view.assigns[:title])
+       |> maybe_assign_layout(runtime_view)
+       |> then(&assign_hook_assigns(owner, mode, params, &1))}
+    end
+  end
+
   defp enrich_view(%View{} = view, bindings) do
     state = view.state || %View.State{}
 
@@ -541,4 +632,114 @@ defmodule AshSDUI.LiveResource do
       end
     end)
   end
+
+  defp patch_query(socket, nil), do: socket
+
+  defp patch_query(socket, query) do
+    path = socket.assigns[:ash_sdui_uri] |> current_path() |> merge_query_path(query)
+    push_patch(socket, to: path)
+  end
+
+  defp current_path(nil), do: "/"
+
+  defp current_path(uri) do
+    parsed = URI.parse(uri)
+    parsed.path || "/"
+  end
+
+  defp merge_query_path(path, %Query{} = query) do
+    params =
+      query.params
+      |> normalize_query_params()
+      |> Map.merge(query_params(query))
+      |> Enum.reject(fn {_key, value} -> blank_query_value?(value) end)
+      |> Enum.into(%{})
+
+    case URI.encode_query(params) do
+      "" -> path
+      encoded -> path <> "?" <> encoded
+    end
+  end
+
+  defp query_params(%Query{} = query) do
+    %{}
+    |> maybe_put_map("search", query.search)
+    |> maybe_put_map("limit", query.limit)
+    |> maybe_put_map("offset", query.offset)
+    |> maybe_put_map("sort", sort_query_param(query.sort))
+    |> maybe_put_map("filters", stringify_keys(query.filters))
+  end
+
+  defp maybe_put_map(map, _key, nil), do: map
+  defp maybe_put_map(map, _key, ""), do: map
+  defp maybe_put_map(map, _key, value) when value == %{}, do: map
+  defp maybe_put_map(map, key, value), do: Map.put(map, key, value)
+
+  defp normalize_query_params(params) when is_map(params) do
+    params
+    |> Map.drop([
+      "search",
+      "sort",
+      "limit",
+      "offset",
+      "filters",
+      :search,
+      :sort,
+      :limit,
+      :offset,
+      :filters
+    ])
+    |> stringify_keys()
+  end
+
+  defp normalize_query_params(_params), do: %{}
+
+  defp stringify_keys(map) when is_map(map) do
+    Map.new(map, fn {key, value} ->
+      {
+        if(is_atom(key), do: Atom.to_string(key), else: key),
+        if(is_map(value), do: stringify_keys(value), else: value)
+      }
+    end)
+  end
+
+  defp stringify_keys(value), do: value
+
+  defp sort_query_param([]), do: nil
+
+  defp sort_query_param(sort) do
+    Enum.map_join(sort, ",", fn
+      {field, :desc} -> "-" <> Atom.to_string(field)
+      {field, :asc} -> Atom.to_string(field)
+      field when is_atom(field) -> Atom.to_string(field)
+    end)
+  end
+
+  defp next_sort_direction(%Query{sort: sort}, field, requested) do
+    cond do
+      requested in ["asc", "desc"] ->
+        String.to_atom(requested)
+
+      Enum.any?(sort, &match?({^field, :asc}, &1)) or
+          Enum.any?(sort, &(&1 == String.to_existing_atom(field))) ->
+        :desc
+
+      true ->
+        :asc
+    end
+  rescue
+    _ -> :asc
+  end
+
+  defp sort_param(field, :desc), do: "-" <> field
+  defp sort_param(field, _direction), do: field
+
+  defp blank_query_value?(nil), do: true
+  defp blank_query_value?(""), do: true
+  defp blank_query_value?(%{}), do: true
+
+  defp blank_query_value?(value) when is_map(value),
+    do: Enum.all?(value, fn {_k, v} -> blank_query_value?(v) end)
+
+  defp blank_query_value?(_value), do: false
 end

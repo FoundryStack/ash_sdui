@@ -26,11 +26,13 @@ defmodule AshSDUI.Components.FieldValue do
     """
   end
 
-  defp subject_for_field(_subject, %{binding: binding}, bindings) when is_atom(binding) do
+  defp subject_for_field(_subject, %{binding: binding}, bindings)
+       when is_atom(binding) and not is_nil(binding) do
     Map.get(bindings, binding)
   end
 
   defp subject_for_field(subject, _field, _bindings), do: subject
+  defp value(nil, _name), do: nil
   defp value(subject, name) when is_map(subject), do: Map.get(subject, name)
   defp value(subject, name), do: Map.get(subject, name)
 

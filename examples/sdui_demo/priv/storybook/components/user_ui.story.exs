@@ -6,5 +6,15 @@ defmodule SduiDemoWeb.Storybook.Components.UserUI do
   lives in a dedicated module instead of polluting the domain resource.
   """
 
-  use AshSDUI.Storybook, resource: SduiDemo.UI.Resources.UserUI
+  use AshSDUI.Storybook,
+    ui: SduiDemo.UI.Resources.UserUI,
+    view: :show,
+    bindings: %{
+      record: %{
+        id: "story-user-1",
+        username: "storybook_user",
+        email: "storybook@example.com",
+        avatar_url: "https://example.com/avatar.png"
+      }
+    }
 end

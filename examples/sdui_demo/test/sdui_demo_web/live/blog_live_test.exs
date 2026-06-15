@@ -321,7 +321,7 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
     end
 
     test "PostUI has correct actions" do
-      actions = AshSDUI.Resource.Info.ui_actions(SduiDemo.UI.Resources.PostUI)
+      actions = AshSDUI.Resource.Info.ui_intents(SduiDemo.UI.Resources.PostUI)
       names = Enum.map(actions, & &1.name)
 
       assert :create in names
@@ -331,7 +331,7 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
     end
 
     test "PostUI actions use label_key for i18n" do
-      actions = AshSDUI.Resource.Info.ui_actions(SduiDemo.UI.Resources.PostUI)
+      actions = AshSDUI.Resource.Info.ui_intents(SduiDemo.UI.Resources.PostUI)
       create_action = Enum.find(actions, &(&1.name == :create))
 
       assert create_action.label_key == "post.action.create"
@@ -339,7 +339,7 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
     end
 
     test "resolve_label resolves via SduiDemo.Gettext" do
-      actions = AshSDUI.Resource.Info.ui_actions(SduiDemo.UI.Resources.PostUI)
+      actions = AshSDUI.Resource.Info.ui_intents(SduiDemo.UI.Resources.PostUI)
       create_action = Enum.find(actions, &(&1.name == :create))
 
       label = AshSDUI.Resource.Info.resolve_label(create_action, SduiDemo.Gettext)
@@ -347,7 +347,7 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
     end
 
     test "UserUI resolves label via gettext_backend configured on the module" do
-      attrs = AshSDUI.Resource.Info.ui_attributes(SduiDemo.UI.Resources.UserUI)
+      attrs = AshSDUI.Resource.Info.ui_fields(SduiDemo.UI.Resources.UserUI)
       username_attr = Enum.find(attrs, &(&1.name == :username))
 
       label = AshSDUI.Resource.Info.resolve_label(username_attr, SduiDemo.UI.Resources.UserUI)

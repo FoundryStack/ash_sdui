@@ -5,5 +5,18 @@ defmodule SduiDemoWeb.Storybook.Components.PostUI do
   Demonstrates the `use AshSDUI.Resource.Standalone` pattern for UI metadata.
   """
 
-  use AshSDUI.Storybook, resource: SduiDemo.UI.Resources.PostUI
+  use AshSDUI.Storybook,
+    ui: SduiDemo.UI.Resources.PostUI,
+    view: :index,
+    recipe: :collection,
+    bindings: %{
+      collection: [
+        %{
+          id: "story-post-1",
+          title: "Storybook Post",
+          body: "Rendered through the generated V2 view path.",
+          published_at: nil
+        }
+      ]
+    }
 end

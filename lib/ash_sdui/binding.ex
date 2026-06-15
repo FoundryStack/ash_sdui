@@ -100,14 +100,17 @@ defmodule AshSDUI.Binding do
          %__MODULE__{source: {:resource, resource}, many?: many?, query: query, default: default},
          opts
        ) do
-    ash_opts =
-      query
-      |> normalize_query()
-      |> Query.to_ash_opts(actor: opts[:actor], tenant: opts[:tenant], domain: opts[:domain])
+    query = normalize_query(query)
+    ash_opts = [actor: opts[:actor], tenant: opts[:tenant], domain: opts[:domain]]
 
     if many? do
-      case Ash.read(resource, ash_opts) do
-        {:ok, records} -> {:ok, records}
+      resource_query =
+        resource
+        |> Ash.Query.new()
+        |> apply_query(query)
+
+      case Ash.read(resource_query, ash_opts) do
+        {:ok, records} -> {:ok, unwrap_many(records)}
         {:error, reason} -> {:error, reason}
       end
     else
@@ -150,4 +153,37 @@ defmodule AshSDUI.Binding do
 
   defp normalize_query(%Query{} = query), do: query
   defp normalize_query(_query), do: nil
+
+  defp apply_query(query, nil), do: query
+
+  defp apply_query(query, %Query{} = state) do
+    query
+    |> maybe_filter(state)
+    |> maybe_sort(state)
+    |> maybe_page(state)
+  end
+
+  defp maybe_filter(query, state) do
+    case Query.to_ash_opts(state, [])[:filter] do
+      nil -> query
+      filter -> Ash.Query.do_filter(query, filter)
+    end
+  end
+
+  defp maybe_sort(query, state) do
+    case Query.to_ash_opts(state, [])[:sort] do
+      nil -> query
+      sort -> Ash.Query.sort(query, sort)
+    end
+  end
+
+  defp maybe_page(query, state) do
+    case Query.to_ash_opts(state, [])[:page] do
+      nil -> query
+      page -> Ash.Query.page(query, page)
+    end
+  end
+
+  defp unwrap_many(%{results: results}) when is_list(results), do: results
+  defp unwrap_many(records), do: records
 end

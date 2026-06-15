@@ -2,24 +2,24 @@ defmodule SduiDemo.UI.Recipes.EditorialPosts do
   @behaviour AshSDUI.LayoutRecipe
 
   alias AshSDUI.Layout.Builder
-  alias AshSDUI.Screen
+  alias AshSDUI.View
   alias SduiDemo.Accounts
   alias SduiDemo.Accounts.User
 
   @impl true
-  def to_layout(%Screen{} = screen, opts) do
+  def to_layout(%View{} = view, opts) do
     records = Keyword.get(opts, :records, [])
     {featured, remaining} = split_records(records)
-    recipe_props = recipe_props(screen)
+    recipe_props = recipe_props(view)
 
     Builder.node("EditorialPostsPage@v1",
       id: "editorial-posts-page",
       static_props:
         %{
-          title: screen.assigns[:title] || "AshSDUI Journal",
-          empty_title: screen.assigns[:empty_state] || "No posts yet",
+          title: view.assigns[:title] || "AshSDUI Journal",
+          empty_title: view.assigns[:empty_state] || "No posts yet",
           empty_body:
-            screen.assigns[:empty_state_body] ||
+            view.assigns[:empty_state_body] ||
               "Create your first entry to see the editorial recipe in action.",
           subtitle:
             "A generated index shaped by an app-side recipe, with room for custom layout and copy.",
@@ -31,10 +31,10 @@ defmodule SduiDemo.UI.Recipes.EditorialPosts do
     )
   end
 
-  defp recipe_props(screen) do
-    screen.assigns
+  defp recipe_props(view) do
+    view.assigns
     |> Map.get(:recipe_overrides, %{})
-    |> Map.get(:screen, %{})
+    |> Map.get(:view, %{})
     |> Map.get(:props, %{})
   end
 

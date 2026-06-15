@@ -38,6 +38,7 @@ defmodule SduiDemoWeb.StorybookTest do
 
   test "storybook uses the shared app stylesheet contract" do
     assert File.read!(@app_css) =~ ~s(@import "./demo_base.css";)
+
     refute File.exists?(
              "/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/examples/sdui_demo/assets/css/storybook.css"
            )
@@ -45,7 +46,7 @@ defmodule SduiDemoWeb.StorybookTest do
 
   test "dev endpoint is wired for browser live reload" do
     assert File.read!(@endpoint_source) =~
-             ~s(socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket)
+             "socket(\"/phoenix/live_reload/socket\", Phoenix.LiveReloader.Socket)"
 
     assert File.read!(@endpoint_source) =~ "plug(Phoenix.LiveReloader)"
     assert File.read!(@dev_config) =~ "live_reload:"

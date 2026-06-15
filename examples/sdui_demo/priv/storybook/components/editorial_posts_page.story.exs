@@ -39,7 +39,8 @@ defmodule SduiDemoWeb.Storybook.Components.EditorialPostsPage do
               %{
                 id: "post-3",
                 title: "Recipes over hand-built index pages",
-                excerpt: "This demonstrates the app-side customization seam without giving up the generated engine.",
+                excerpt:
+                  "This demonstrates the app-side customization seam without giving up the generated engine.",
                 published_at: nil,
                 author_name: "builder",
                 status: "Draft",
