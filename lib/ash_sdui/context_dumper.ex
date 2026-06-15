@@ -94,15 +94,17 @@ defmodule AshSDUI.ContextDumper do
   defp resource_markdown(resources) do
     Enum.map(resources, fn resource ->
       default_component = Info.default_component(resource)
-      actions = Info.ui_actions(resource)
-      attributes = Info.ui_attributes(resource)
+      views = Info.views(resource)
+      intents = Info.ui_intents(resource)
+      fields = Info.ui_fields(resource)
 
       """
       ### #{inspect(resource)}
 
       - **Default Component**: #{default_component || "none"}
-      - **UI Actions**: #{action_list(actions)}
-      - **UI Attributes**: #{attribute_list(attributes)}
+      - **Views**: #{view_list(views)}
+      - **UI Intents**: #{intent_list(intents)}
+      - **UI Fields**: #{field_list(fields)}
       """
     end)
     |> Enum.join("\n")
@@ -112,43 +114,63 @@ defmodule AshSDUI.ContextDumper do
     %{
       module: to_string(resource),
       default_component: Info.default_component(resource),
-      ui_actions: Info.ui_actions(resource) |> Enum.map(&action_json/1),
-      ui_attributes: Info.ui_attributes(resource) |> Enum.map(&attribute_json/1)
+      views: Info.views(resource) |> Enum.map(&view_json/1),
+      ui_intents: Info.ui_intents(resource) |> Enum.map(&intent_json/1),
+      ui_fields: Info.ui_fields(resource) |> Enum.map(&field_json/1)
     }
   end
 
-  defp action_list(actions) do
-    case actions do
+  defp view_list(views) do
+    case views do
       [] -> "none"
-      actions -> Enum.map(actions, &":#{&1.name}") |> Enum.join(", ")
+      views -> Enum.map(views, &":#{&1.name}") |> Enum.join(", ")
     end
   end
 
-  defp action_json(action) do
+  defp view_json(view) do
     %{
-      name: action.name,
-      intent: action.intent,
-      label: action.label,
-      icon: action.icon
+      name: view.name,
+      recipe: view.recipe,
+      action: view.action,
+      read_action: view.read_action,
+      query: view.query
     }
   end
 
-  defp attribute_list(attributes) do
-    case attributes do
+  defp intent_list(intents) do
+    case intents do
       [] -> "none"
-      attrs -> Enum.map(attrs, &":#{&1.name}") |> Enum.join(", ")
+      intents -> Enum.map(intents, &":#{&1.name}") |> Enum.join(", ")
     end
   end
 
-  defp attribute_json(attribute) do
+  defp intent_json(intent) do
     %{
-      name: attribute.name,
-      label: attribute.label,
-      icon: attribute.icon,
-      hidden: attribute.hidden,
-      order: attribute.order,
-      widget: attribute.widget,
-      field_component: attribute.field_component && to_string(attribute.field_component)
+      name: intent.name,
+      style: intent.style,
+      label: intent.label,
+      icon: intent.icon,
+      target: inspect(intent.target)
+    }
+  end
+
+  defp field_list(fields) do
+    case fields do
+      [] -> "none"
+      fields -> Enum.map(fields, &":#{&1.name}") |> Enum.join(", ")
+    end
+  end
+
+  defp field_json(field) do
+    %{
+      name: field.name,
+      label: field.label,
+      icon: field.icon,
+      hidden: field.hidden,
+      order: field.order,
+      widget: field.widget,
+      binding: field.binding,
+      field_component: field.field_component && to_string(field.field_component)
     }
   end
 

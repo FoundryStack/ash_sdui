@@ -1,5 +1,12 @@
 # Plan: Implement AshSDUI Library
 
+> Historical note: this bootstrap plan is effectively complete. The package now
+> exists, tests pass, Storybook support is available through
+> `AshSDUI.Storybook`, and the generated UI path is centered on
+> `AshSDUI.View`, `ui_binding`, `ui_query`, `ui_field`, and `ui_intent`.
+> Current work should treat this document as historical context, not as the
+> active source of truth for public APIs.
+
 ## Context
 
 Building a Server-Driven UI library from scratch based on the spec at `packages/ash_sdui/docs/spec.md`. The package directory currently contains only the spec — no code. The `examples/` directory doesn't exist yet. Approach: tests → implementation → storybook → example app.

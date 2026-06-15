@@ -6,7 +6,7 @@ defmodule AshSDUI.Form do
   alias AshSDUI.Resource.Info
 
   @doc """
-  Returns ordered field metadata for an action using visible `ui_attribute`
+  Returns ordered field metadata for an action using visible `ui_field`
   definitions that are accepted by that action.
   """
   def fields(resource_or_ui, action_name) do
@@ -20,19 +20,19 @@ defmodule AshSDUI.Form do
       end
 
     resource_or_ui
-    |> Info.ui_attributes()
+    |> Info.ui_fields()
     |> Enum.reject(& &1.hidden)
     |> Enum.reject(&(&1.form? == false))
     |> Enum.filter(&MapSet.member?(accepted, &1.name))
     |> Enum.sort_by(& &1.order)
-    |> Enum.map(fn attr ->
-      attribute = Ash.Resource.Info.attribute(resource, attr.name)
+    |> Enum.map(fn field ->
+      attribute = Ash.Resource.Info.attribute(resource, field.name)
 
       %{
-        name: attr.name,
-        label: Info.resolve_label(attr, resource_or_ui),
-        widget: attr.widget || infer_widget(attribute),
-        field_component: attr.field_component,
+        name: field.name,
+        label: Info.resolve_label(field, resource_or_ui),
+        widget: field.widget || infer_widget(attribute),
+        field_component: field.field_component,
         type: attribute && attribute.type,
         required: attribute && attribute.allow_nil? == false
       }

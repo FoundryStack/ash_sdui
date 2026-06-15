@@ -6,7 +6,7 @@ Server-Driven UI for Phoenix LiveView applications backed by [Ash](https://hexdo
 
 ### Why ash_sdui has a real advantage:
 
-- It has a cleaner conceptual split between metadata, screen resolution, recipes, and render tree.
+- It has a clean conceptual split between metadata, view resolution, recipes, and render tree.
 - The standalone UI modules are a nice boundary for humans and agents.
 - It is less locked into “generated CRUD pages” as the final abstraction.
 - It looks easier to steer toward product UI, not just admin UI.
@@ -15,7 +15,7 @@ Server-Driven UI for Phoenix LiveView applications backed by [Ash](https://hexdo
 
 - Define UI layouts as composable trees of typed components
 - Persist and edit layouts at runtime via the unified `AshSDUI.Layout` API
-- Code-based layouts for static or config-driven screens
+- Code-based layouts for static or config-driven views
 - Registry-based component discovery with automatic scanning
 - ETS-backed cache with automatic invalidation when `UINode` records change
 - GraphQL fragment metadata on components for schema-driven tooling
@@ -151,21 +151,21 @@ You can override `mount/3` after `use AshSDUI` to add your own socket assigns �
 For LiveViews that rebuild ephemeral layouts, use `AshSDUI.LiveScreen.assign_layout/3`
 to register, evict, render, and assign the tree in one step.
 
-### Screen and recipe overrides
+### View and Recipe Overrides
 
 `AshSDUI.LiveResource` can keep the LiveView tiny while still allowing targeted
-customization from one predictable callback. Prefer `ash_sdui_screen_opts/4`
+customization from one predictable callback. Prefer `ash_sdui_view_opts/4`
 over rebuilding `mount/3` when you only need to tweak labels, copy, or the
 presentation of the built-in recipes.
 
 ```elixir
 defmodule MyAppWeb.PostsLive do
   use AshSDUI.LiveResource,
-    resource: MyApp.UI.PostUI,
-    screen: :index,
+    ui: MyApp.UI.PostUI,
+    view: :index,
     domain: MyApp.Blog
 
-  def ash_sdui_screen_opts(_mode, _params, _session, _socket) do
+  def ash_sdui_view_opts(_mode, _params, _session, _socket) do
     [
       recipe_overrides: [
         title: "Editorial Posts",
@@ -176,7 +176,7 @@ defmodule MyAppWeb.PostsLive do
         fields: %{
           title: %{label: "Headline"}
         },
-        actions: %{
+        intents: %{
           create: %{label: "Compose Post"}
         },
         toolbar: false,
@@ -192,13 +192,40 @@ The built-in generic recipe understands:
 - `title`
 - `empty_state`
 - `fields`
-- `actions`
+- `intents`
 - `toolbar`
 - `content`
-- `screen`
+- `view`
 
-Custom recipes can also read `screen.assigns[:recipe_overrides]` to share the
+Custom recipes can also read `view.assigns[:recipe_overrides]` to share the
 same authoring surface for app-specific props instead of inventing another DSL.
+
+Built-in generated components now share one runtime contract:
+
+- `view` for the resolved `AshSDUI.View`
+- `bindings` for named loaded data sources
+- `state` for query and selection state
+- `context` for actor, tenant, locale, and audience
+
+That same contract is passed through `layout: :sdui` recipe trees, so generated
+views and custom SDUI recipes can compose against the same surface.
+
+### Storybook and Demo UI
+
+For generated UI demos, prefer `AshSDUI.Storybook` with `ui:` and `view:`
+instead of hand-building raw trees:
+
+```elixir
+defmodule MyAppWeb.Storybook.Posts do
+  use AshSDUI.Storybook,
+    ui: MyApp.UI.PostUI,
+    view: :index,
+    bindings: %{collection: [%{id: "1", title: "Hello"}]}
+end
+```
+
+This resolves the view, builds the recipe tree, and renders it through the same
+`SDUIRoot` path used by `layout: :sdui`.
 
 For a fuller walkthrough, see [docs/authoring_generated_screens.md](/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/authoring_generated_screens.md).
 
@@ -207,10 +234,10 @@ For a fuller walkthrough, see [docs/authoring_generated_screens.md](/Users/maxsv
 AshSDUI supports three related but distinct ways to render layouts. They share
 the same `AshSDUI.Layout.Node` shape, but they solve different problems:
 
-- Generated `layout: :sdui` screens:
-  `AshSDUI.LiveResource` resolves a screen, calls `Screen.to_layout/2`, and
-  renders the resulting tree immediately. Use this when your screen should stay
-  metadata-driven and the layout can be rebuilt from the screen each request.
+- Generated `layout: :sdui` views:
+  `AshSDUI.LiveResource` resolves a view, calls `View.to_layout/2`, and
+  renders the resulting tree immediately. Use this when your view should stay
+  metadata-driven and the layout can be rebuilt from the view each request.
 - Ephemeral runtime layouts:
   `AshSDUI.LiveScreen.assign_layout/3` registers a code-built tree, evicts the
   cache, renders it, and assigns it onto the socket. Use this when a LiveView
@@ -295,38 +322,38 @@ When a `UINode` has a `:subject_resource` and `:subject_id`, `AshSDUI.Calculatio
 
 ## Metadata-driven forms
 
-Use `widget:` on `ui_attribute` entries to guide generated forms:
+Use `widget:` on `ui_field` entries to guide generated forms:
 
 ```elixir
 sdui do
-  screen :index, recipe: :collection, read_action: :read
-  screen :show, recipe: :detail, read_action: :read
-  screen :new, recipe: :form, action: :create
-  screen :edit, recipe: :form, action: :update
+  view :index, recipe: :collection, read_action: :read
+  view :show, recipe: :detail, read_action: :read
+  view :new, recipe: :form, action: :create
+  view :edit, recipe: :form, action: :update
 
-  ui_attribute :title, label: "Title", widget: :text_input
-  ui_attribute :body, label: "Body", widget: :textarea
-  ui_attribute :email, label: "Email", widget: :email
+  ui_field :title, label: "Title", widget: :text_input
+  ui_field :body, label: "Body", widget: :textarea
+  ui_field :email, label: "Email", widget: :email
 end
 ```
 
 `AshSDUI.Form.fields/2` combines that metadata with an Ash action's accepted
 attributes so you can render forms from one source of truth.
 
-## Resource screens and layout recipes
+## Resource Views and Layout Recipes
 
-For higher-level frontends, use `AshSDUI.Screen` as the intermediate model between
-Ash resources and concrete UI trees. A screen resolves Ash actions, fields,
+For higher-level frontends, use `AshSDUI.View` as the intermediate model between
+Ash resources and concrete UI trees. A view resolves Ash actions, fields,
 relationships, SDUI metadata, and runtime context into a data structure that a
 layout recipe can render.
 
 ```elixir
-{:ok, screen} =
-  AshSDUI.Screen.resolve(MyApp.UI.Resources.PostUI, :index,
+{:ok, view} =
+  AshSDUI.View.resolve(MyApp.UI.Resources.PostUI, :index,
     context: AshSDUI.Context.new(actor: current_user, audience: :customer)
   )
 
-root = AshSDUI.Screen.to_layout!(screen)
+root = AshSDUI.View.to_layout!(view)
 ```
 
 AshSDUI ships a generic recipe that emits stable semantic regions such as
@@ -337,9 +364,9 @@ of being limited to built-in preset names:
 defmodule MyApp.UI.Recipes.ArticleShow do
   @behaviour AshSDUI.LayoutRecipe
 
-  def to_layout(screen, _opts) do
+  def to_layout(view, _opts) do
     AshSDUI.Layout.Builder.node("Article.ShowShell@v1",
-      static_props: %{mode: screen.mode},
+      static_props: %{mode: view.mode},
       children: [
         AshSDUI.Layout.Builder.node("Article.Body@v1", region: :content)
       ]
@@ -358,14 +385,14 @@ system or page structure.
 ### Contextual variants
 
 Do not duplicate Ash authorization rules in UI metadata. Pass runtime context
-into screen resolution and use variant resolvers for presentation-only choices:
+into view resolution and use variant resolvers for presentation-only choices:
 
 ```elixir
-customer_variant = fn screen, %AshSDUI.Context{audience: :customer} ->
-  %{screen | fields: Enum.reject(screen.fields, &(&1.name == :internal_notes))}
+customer_variant = fn view, %AshSDUI.Context{audience: :customer} ->
+  %{view | fields: Enum.reject(view.fields, &(&1.name == :internal_notes))}
 end
 
-AshSDUI.Screen.resolve(MyApp.UI.Resources.PostUI, :show,
+AshSDUI.View.resolve(MyApp.UI.Resources.PostUI, :show,
   context: [actor: current_user, tenant: tenant, audience: :customer],
   variant_resolvers: [customer_variant]
 )
@@ -376,38 +403,38 @@ arbitrary `assigns`. Authorization-aware filtering can be added as one resolver;
 audience, device, locale, or product-specific variants can be added as others.
 That makes roles and groups app vocabulary instead of AshSDUI core concepts.
 
-## Generated LiveResource screens
+## Generated LiveResource Views
 
-For conventional resource screens, `AshSDUI.LiveResource` owns the repeated
+For conventional generated views, `AshSDUI.LiveResource` owns the repeated
 LiveView plumbing:
 
 ```elixir
 defmodule MyAppWeb.PostsLive do
   use AshSDUI.LiveResource,
-    resource: MyApp.UI.Resources.PostUI,
-    screen: :index,
+    ui: MyApp.UI.Resources.PostUI,
+    view: :index,
     domain: MyApp.Blog
 end
 ```
 
-The generated LiveView resolves the screen, loads index/show data through Ash,
-builds `AshPhoenix.Form` values for new/edit screens, handles `"validate"`,
+The generated LiveView resolves the view, loads index/show data through Ash,
+builds `AshPhoenix.Form` values for new/edit views, handles `"validate"`,
 `"save"`, and `"delete"` events, and renders the package DaisyUI components.
 Override `mount/3`, `handle_event/3`, or `render/1` in the module when an app
 needs deeper behavior.
 
 ### Built-in DaisyUI components
 
-AshSDUI includes reusable Phoenix components for common generated screens:
+AshSDUI includes reusable Phoenix components for common generated views:
 
-- `AshSDUI.Components.ResourceForm`
-- `AshSDUI.Components.ResourceActions`
-- `AshSDUI.Components.ResourceCollection`
-- `AshSDUI.Components.ResourceDetail`
+- `AshSDUI.Components.RecordForm`
+- `AshSDUI.Components.IntentBar`
+- `AshSDUI.Components.RecordList`
+- `AshSDUI.Components.RecordDetail`
 - `AshSDUI.Components.EmptyState`
 
 These are defaults, not a closed design system. Apps can replace them from a
-layout recipe, override fields/actions, or skip `LiveResource` and render custom
+layout recipe, override fields/intents, or skip `LiveResource` and render custom
 components directly.
 
 ## License

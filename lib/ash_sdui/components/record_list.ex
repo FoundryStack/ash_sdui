@@ -1,14 +1,27 @@
-defmodule AshSDUI.Components.ResourceCollection do
+defmodule AshSDUI.Components.RecordList do
   @moduledoc """
-  DaisyUI-backed generated collection view for Ash resource records.
+  DaisyUI-backed generated list view for Ash records.
   """
 
   use Phoenix.Component
 
+  AshSDUI.Registry.register("AshSDUI.RecordList@v1", __MODULE__, %{
+    fragment: "",
+    subject_types: []
+  })
+
+  def __ash_sdui_component_name__, do: "AshSDUI.RecordList@v1"
+  def __ash_sdui_fragment__, do: ""
+  def __ash_sdui_subject_types__, do: []
+
   attr(:records, :list, default: [])
   attr(:fields, :list, required: true)
-  attr(:actions, :list, default: [])
-  attr(:resource, :atom, default: nil)
+  attr(:intents, :list, default: [])
+  attr(:ui, :atom, default: nil)
+  attr(:view, :any, default: nil)
+  attr(:bindings, :map, default: %{})
+  attr(:state, :any, default: nil)
+  attr(:context, :any, default: nil)
   attr(:empty_title, :string, default: "No records")
   attr(:empty_body, :string, default: nil)
   attr(:class, :string, default: nil)
@@ -25,7 +38,7 @@ defmodule AshSDUI.Components.ResourceCollection do
               <%= for field <- @fields do %>
                 <th>{field.label}</th>
               <% end %>
-              <th :if={@actions != []}></th>
+              <th :if={@intents != []}></th>
             </tr>
           </thead>
           <tbody>
@@ -33,14 +46,22 @@ defmodule AshSDUI.Components.ResourceCollection do
               <tr>
                 <%= for field <- @fields do %>
                   <td>
-                    <AshSDUI.Components.FieldValue.render subject={record} field={field} />
+                    <AshSDUI.Components.FieldValue.render
+                      subject={record}
+                      field={field}
+                      bindings={@bindings}
+                    />
                   </td>
                 <% end %>
-                <td :if={@actions != []} class="text-right">
-                  <AshSDUI.Components.ResourceActions.render
-                    resource={@resource}
+                <td :if={@intents != []} class="text-right">
+                  <AshSDUI.Components.IntentBar.render
+                    ui={@ui}
+                    view={@view}
                     subject={record}
-                    actions={@actions}
+                    intents={@intents}
+                    bindings={@bindings}
+                    state={@state}
+                    context={@context}
                     placement={:row}
                   />
                 </td>

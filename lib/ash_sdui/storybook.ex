@@ -7,15 +7,17 @@ defmodule AshSDUI.Storybook do
   ## Usage
 
       defmodule MyAppWeb.Storybook.PlayerCard do
-        use AshSDUI.Storybook, resource: MyApp.Player
+        use AshSDUI.Storybook, ui: MyApp.UI.PlayerUI, view: :index
       end
 
-  This generates a story pointing at `SDUIRoot` with a mock tree derived from the resource's
-  `default_component` annotation.
+  This generates a story pointing at `SDUIRoot` with a render tree derived from
+  the resolved view. For low-level component stories, you can still pass
+  `resource:` to build a single mock node from `default_component`.
 
   ## Requirements
 
-  - Resource must have `default_component` set in its `sdui` block, or pass `:component_name`
+  - Prefer `ui:` and `view:` for generated view stories
+  - Raw `resource:` stories require `default_component` or `:component_name`
   - `phoenix_storybook` must be available as a dependency
   """
 
@@ -25,16 +27,13 @@ defmodule AshSDUI.Storybook do
         use PhoenixStorybook.Story, :component
         alias PhoenixStorybook.Stories.Variation
 
-        def function, do: &AshSDUI.Components.SDUIRoot.render/1
+        def function, do: &AshSDUI.Storybook.render/1
 
         def variations do
-          resource = unquote(Keyword.fetch!(opts, :resource))
-          base_tree = AshSDUI.Mock.from_resource(resource, unquote(opts))
-
           [
             %Variation{
               id: :default,
-              attributes: %{tree: base_tree}
+              attributes: AshSDUI.Storybook.story_assigns(unquote(Macro.escape(opts)))
             }
           ]
         end
@@ -47,4 +46,61 @@ defmodule AshSDUI.Storybook do
       end
     end
   end
+
+  def render(assigns) do
+    AshSDUI.Components.SDUIRoot.render(assigns)
+  end
+
+  def story_assigns(opts) when is_list(opts) do
+    cond do
+      opts[:ui] ->
+        view_assigns(opts)
+
+      opts[:resource] ->
+        %{tree: AshSDUI.Mock.from_resource(Keyword.fetch!(opts, :resource), opts)}
+
+      true ->
+        raise ArgumentError, "AshSDUI.Storybook expects :ui or :resource"
+    end
+  end
+
+  defp view_assigns(opts) do
+    ui = Keyword.fetch!(opts, :ui)
+    view_name = Keyword.get(opts, :view, :index)
+    params = Keyword.get(opts, :params, %{})
+    context = Keyword.get(opts, :context, %{})
+    recipe = Keyword.get(opts, :recipe)
+    recipe_overrides = Keyword.get(opts, :recipe_overrides, %{})
+    assigns = Keyword.get(opts, :assigns, %{})
+    bindings = Keyword.get(opts, :bindings, %{})
+
+    view_opts =
+      [
+        params: params,
+        context: context,
+        recipe_overrides: recipe_overrides,
+        assigns: assigns
+      ]
+      |> maybe_put(:recipe, recipe)
+
+    {:ok, view} = AshSDUI.View.resolve(ui, view_name, view_opts)
+
+    state =
+      (view.state || %AshSDUI.View.State{})
+      |> then(fn state ->
+        %{state | assigns: Map.merge(state.assigns, %{bindings: bindings})}
+      end)
+
+    {:ok, tree} =
+      AshSDUI.View.to_tree(view,
+        bindings: bindings,
+        state: state,
+        context: view.context
+      )
+
+    %{tree: tree, context: view.context}
+  end
+
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
 end

@@ -5,8 +5,13 @@ defmodule AshSDUI.Resource.Verifiers.VerifyActionNames do
   require Spark.Dsl.Extension
 
   def verify(dsl_state) do
-    ui_actions = Spark.Dsl.Extension.get_entities(dsl_state, [:sdui]) || []
-    ui_actions = Enum.filter(ui_actions, &is_struct(&1, AshSDUI.Resource.UiAction))
+    intents =
+      (Spark.Dsl.Extension.get_entities(dsl_state, [:sdui]) || [])
+      |> Enum.flat_map(fn
+        %AshSDUI.Resource.UiIntent{target: {:ash_action, action}} when is_atom(action) -> [action]
+        %AshSDUI.Resource.UiIntent{name: name, target: nil} when is_atom(name) -> [name]
+        _other -> []
+      end)
 
     module = Spark.Dsl.Verifier.get_persisted(dsl_state, :module)
 
@@ -19,18 +24,20 @@ defmodule AshSDUI.Resource.Verifiers.VerifyActionNames do
       defined_action_names =
         resource |> Ash.Resource.Info.actions() |> Enum.map(& &1.name) |> MapSet.new()
 
-      ui_actions
-      |> Enum.filter(&(&1.name not in defined_action_names))
+      intents
+      |> Enum.uniq()
+      |> Enum.reject(&MapSet.member?(defined_action_names, &1))
       |> Enum.each(&raise_error(&1, resource))
     end
 
     :ok
   end
 
-  defp raise_error(ui_action, resource) do
+  defp raise_error(action_name, resource) do
     raise Spark.Error.DslError,
-      path: [:sdui, :ui_action],
+      path: [:sdui, :ui_intent],
       module: resource,
-      message: "ui_action `:#{ui_action.name}` is not defined on resource #{inspect(resource)}"
+      message:
+        "ui intent/action `:#{action_name}` is not defined on resource #{inspect(resource)}"
   end
 end

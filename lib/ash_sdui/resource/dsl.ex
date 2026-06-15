@@ -1,15 +1,13 @@
-defmodule AshSDUI.Resource.UiAction do
+defmodule AshSDUI.Resource.UiIntent do
   @moduledoc false
   defstruct [
     :name,
-    :intent,
+    :style,
     :label,
     :label_key,
     :icon,
     :component_override,
-    :kind,
-    :to,
-    :event,
+    :target,
     :confirm,
     :placement,
     :requires_actor?,
@@ -19,14 +17,12 @@ defmodule AshSDUI.Resource.UiAction do
 
   @type t :: %__MODULE__{
           name: atom,
-          intent: :primary | :secondary | :destructive | :info,
+          style: atom | nil,
           label: String.t() | nil,
           label_key: String.t() | nil,
           icon: String.t() | nil,
           component_override: String.t() | nil,
-          kind: :link | :event | :submit | nil,
-          to: String.t() | nil,
-          event: String.t() | nil,
+          target: term,
           confirm: boolean | String.t() | nil,
           placement: atom | nil,
           requires_actor?: boolean,
@@ -35,7 +31,7 @@ defmodule AshSDUI.Resource.UiAction do
         }
 end
 
-defmodule AshSDUI.Resource.Screen do
+defmodule AshSDUI.Resource.View do
   @moduledoc false
   defstruct [
     :name,
@@ -45,6 +41,7 @@ defmodule AshSDUI.Resource.Screen do
     :layout,
     :title,
     :empty_state,
+    :query,
     :__spark_metadata__
   ]
 
@@ -56,11 +53,12 @@ defmodule AshSDUI.Resource.Screen do
           layout: atom | nil,
           title: String.t() | nil,
           empty_state: String.t() | nil,
+          query: atom | nil,
           __spark_metadata__: any
         }
 end
 
-defmodule AshSDUI.Resource.UiAttribute do
+defmodule AshSDUI.Resource.UiField do
   @moduledoc false
   defstruct [
     :name,
@@ -79,6 +77,7 @@ defmodule AshSDUI.Resource.UiAttribute do
     :format,
     :empty_state,
     :badge?,
+    :binding,
     :__spark_metadata__
   ]
 
@@ -99,6 +98,51 @@ defmodule AshSDUI.Resource.UiAttribute do
           format: atom | nil,
           empty_state: String.t() | nil,
           badge?: boolean,
+          binding: atom | nil,
+          __spark_metadata__: any
+        }
+end
+
+defmodule AshSDUI.Resource.UiBinding do
+  @moduledoc false
+  defstruct [
+    :name,
+    :source,
+    :many?,
+    :query,
+    :default,
+    :__spark_metadata__
+  ]
+
+  @type t :: %__MODULE__{
+          name: atom,
+          source: term,
+          many?: boolean | nil,
+          query: atom | nil,
+          default: term,
+          __spark_metadata__: any
+        }
+end
+
+defmodule AshSDUI.Resource.UiQuery do
+  @moduledoc false
+  defstruct [
+    :name,
+    :search,
+    :sort,
+    :filters,
+    :default_sort,
+    :default_limit,
+    :__spark_metadata__
+  ]
+
+  @type t :: %__MODULE__{
+          name: atom,
+          search: [atom] | nil,
+          sort: [atom] | nil,
+          filters: [atom] | nil,
+          default_sort: atom | [atom | {atom, atom}] | nil,
+          default_limit: pos_integer | nil,
           __spark_metadata__: any
         }
 end

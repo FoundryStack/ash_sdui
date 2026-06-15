@@ -16,9 +16,9 @@ defmodule AshSDUI do
   - `AshSDUI.Notifier` — Ash notifier that evicts cache entries on resource changes
   - `AshSDUI.Calculations.ResolveSubject` — resolves `{subject_resource, subject_id}` to a live record
   - `AshSDUI.Components.SDUIRoot` — Phoenix component that recursively renders a tree
-  - `AshSDUI.Screen` — resolves Ash resources and SDUI metadata into generic screen specs
-  - `AshSDUI.Context` — runtime actor/audience/tenant/device context for screen resolution
-  - `AshSDUI.LayoutRecipe` — app-extensible conversion from screen specs to layout trees
+  - `AshSDUI.View` — resolves Ash resources and SDUI metadata into generic view specs
+  - `AshSDUI.Context` — runtime actor/audience/tenant/device context for view resolution
+  - `AshSDUI.LayoutRecipe` — app-extensible conversion from view specs to layout trees
 
   ## Usage in a LiveView
 
@@ -106,11 +106,13 @@ defmodule AshSDUI do
 
       def sdui_root(assigns) do
         tree = Map.get(assigns, :tree) || Map.get(assigns, :__sdui_tree__)
+
         assigns =
           assigns
           |> Map.put(:tree, tree)
           |> Map.put_new(:context, Map.get(assigns, :ash_sdui_context))
           |> Map.put_new(:domain, Map.get(assigns, :ash_sdui_domain))
+
         # Pass through override slots if present
         AshSDUI.Components.SDUIRoot.render(assigns)
       end

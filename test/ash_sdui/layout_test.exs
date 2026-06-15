@@ -93,7 +93,11 @@ defmodule AshSDUI.LayoutTest do
 
     test "fetch/2 prefers registered layouts over stored ones when source is :any" do
       Layout.register("shared-layout-name", Builder.node("Registered.Root@v1"))
-      assert {:ok, _records} = Layout.save("shared-layout-name", Builder.node("Stored.Root@v1"), status: :published)
+
+      assert {:ok, _records} =
+               Layout.save("shared-layout-name", Builder.node("Stored.Root@v1"),
+                 status: :published
+               )
 
       assert {:ok, layout} = Layout.fetch("shared-layout-name")
       assert layout.root.component == "Registered.Root@v1"
@@ -122,7 +126,12 @@ defmodule AshSDUI.LayoutTest do
       assert {:ok, records} = Layout.save("custom-node-layout", root, opts)
       assert length(records) == 2
 
-      assert {:ok, layout} = Layout.fetch("custom-node-layout", source: :stored, node_resource: CustomNodeResource)
+      assert {:ok, layout} =
+               Layout.fetch("custom-node-layout",
+                 source: :stored,
+                 node_resource: CustomNodeResource
+               )
+
       assert layout.root.component == "Custom.Root@v1"
       assert Enum.map(layout.root.children, & &1.component) == ["Custom.Child@v1"]
     end

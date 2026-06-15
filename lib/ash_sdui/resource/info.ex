@@ -1,27 +1,6 @@
 defmodule AshSDUI.Resource.Info do
   @moduledoc """
-  Introspection API for AshSDUI.Resource DSL extensions.
-
-  Works with both inline Ash extensions and standalone UI modules.
-
-  ## Label resolution
-
-  Labels can be either hardcoded strings (`label: "Username"`) or gettext keys
-  (`label_key: "user.username"`). Use `resolve_label/2` to get the final string:
-
-      AshSDUI.Resource.Info.resolve_label(attr, MyApp.Gettext)
-      # => calls Gettext.dgettext(MyApp.Gettext, "sdui", "user.username")
-
-  Configure a default backend on the UI module:
-
-      sdui do
-        gettext_backend MyApp.Gettext
-        ui_attribute :username, label_key: "user.username"
-      end
-
-  Then resolve without passing the backend explicitly:
-
-      AshSDUI.Resource.Info.resolve_label(attr, MyUIModule)
+  Introspection API for `AshSDUI.Resource` DSL entities.
   """
 
   require Spark.Dsl.Extension
@@ -51,55 +30,58 @@ defmodule AshSDUI.Resource.Info do
     Spark.Dsl.Extension.get_opt(module, [:sdui], :gettext_domain, "sdui")
   end
 
-  @doc "Reads all `ui_action` entities from the sdui block, or []."
-  def ui_actions(resource) do
+  @doc "Reads all `view` entities from the sdui block, or []."
+  def views(resource) do
     (Spark.Dsl.Extension.get_entities(resource, [:sdui]) || [])
-    |> Enum.filter(&is_struct(&1, AshSDUI.Resource.UiAction))
+    |> Enum.filter(&is_struct(&1, AshSDUI.Resource.View))
   end
 
-  @doc "Reads all `screen` entities from the sdui block, or []."
-  def screens(resource) do
-    (Spark.Dsl.Extension.get_entities(resource, [:sdui]) || [])
-    |> Enum.filter(&is_struct(&1, AshSDUI.Resource.Screen))
-  end
-
-  @doc "Reads a named screen entity from the sdui block."
-  def screen(resource, name) do
+  @doc "Reads a named view entity from the sdui block."
+  def view(resource, name) do
     resource
-    |> screens()
+    |> views()
     |> Enum.find(&(&1.name == name))
   end
 
-  @doc "Reads all `ui_attribute` entities from the sdui block, or []."
-  def ui_attributes(resource) do
+  @doc "Reads all `ui_intent` entities from the sdui block, or []."
+  def ui_intents(resource) do
     (Spark.Dsl.Extension.get_entities(resource, [:sdui]) || [])
-    |> Enum.filter(&is_struct(&1, AshSDUI.Resource.UiAttribute))
+    |> Enum.filter(&is_struct(&1, AshSDUI.Resource.UiIntent))
+  end
+
+  @doc "Reads all `ui_field` entities from the sdui block, or []."
+  def ui_fields(resource) do
+    (Spark.Dsl.Extension.get_entities(resource, [:sdui]) || [])
+    |> Enum.filter(&is_struct(&1, AshSDUI.Resource.UiField))
+  end
+
+  @doc "Reads all `ui_binding` entities from the sdui block, or []."
+  def ui_bindings(resource) do
+    (Spark.Dsl.Extension.get_entities(resource, [:sdui]) || [])
+    |> Enum.filter(&is_struct(&1, AshSDUI.Resource.UiBinding))
+  end
+
+  @doc "Reads all `ui_query` entities from the sdui block, or []."
+  def ui_queries(resource) do
+    (Spark.Dsl.Extension.get_entities(resource, [:sdui]) || [])
+    |> Enum.filter(&is_struct(&1, AshSDUI.Resource.UiQuery))
   end
 
   @doc """
-  Resolves the display label for a `UiAction` or `UiAttribute`.
+  Resolves the display label for a DSL entity.
 
   Priority:
-  1. `label` field (hardcoded string) — returned as-is
-  2. `label_key` field — looked up via `Gettext.dgettext/3` using the provided backend
-  3. Falls back to the atom name stringified (e.g. `:username` → `"username"`)
-
-  The `backend_or_module` can be either:
-  - A Gettext backend module directly (e.g. `MyApp.Gettext`)
-  - A UI annotation module whose `gettext_backend` option will be read
-
-  Pass `domain` to override the gettext domain (default reads from the module or "sdui").
+  1. `label`
+  2. `label_key` via Gettext when a backend is configured
+  3. titleized `name`
   """
   def resolve_label(entity, backend_or_module, domain \\ nil)
 
-  def resolve_label(%{label: label}, _backend_or_module, _domain) when is_binary(label) do
-    label
-  end
+  def resolve_label(%{label: label}, _backend_or_module, _domain) when is_binary(label), do: label
 
-  def resolve_label(%{label_key: key, name: name} = _entity, backend_or_module, domain)
+  def resolve_label(%{label_key: key, name: name}, backend_or_module, domain)
       when is_binary(key) do
     {backend, resolved_domain} = resolve_gettext_config(backend_or_module, domain)
-
     gettext_mod = Module.concat(["Gettext"])
 
     if backend && Code.ensure_loaded?(backend) && function_exported?(backend, :lgettext, 4) &&
@@ -115,7 +97,6 @@ defmodule AshSDUI.Resource.Info do
   end
 
   defp resolve_gettext_config(backend_or_module, override_domain) do
-    # Check if it's a UI annotation module with gettext_backend configured
     configured_backend =
       try do
         gettext_backend(backend_or_module)

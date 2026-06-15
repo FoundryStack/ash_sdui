@@ -1,6 +1,6 @@
 defmodule AshSDUI.LayoutRecipe do
   @moduledoc """
-  Behaviour for converting resolved screens into SDUI layout trees.
+  Behaviour for converting resolved views into SDUI layout trees.
 
   Recipes are the extensibility point behind higher-level layout names. The core
   package can ship convenient recipes, while applications can register their own
@@ -8,9 +8,9 @@ defmodule AshSDUI.LayoutRecipe do
   """
 
   alias AshSDUI.Layout
-  alias AshSDUI.Screen
+  alias AshSDUI.View
 
-  @callback to_layout(Screen.t(), keyword) :: Layout.Node.t()
+  @callback to_layout(View.t(), keyword) :: Layout.Node.t()
 end
 
 defmodule AshSDUI.LayoutRecipe.Registry do

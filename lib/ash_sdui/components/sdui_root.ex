@@ -12,6 +12,7 @@ defmodule AshSDUI.Components.SDUIRoot do
     else
       # Support both old :override slot style and new overrides map
       overrides = build_override_map(assigns[:override] || assigns[:overrides] || [])
+
       assigns =
         assigns
         |> assign(:_overrides, overrides)
@@ -26,7 +27,9 @@ defmodule AshSDUI.Components.SDUIRoot do
 
   defp render_node(%{node: nil} = assigns), do: ~H""
 
-  defp render_node(%{node: raw_node, _overrides: overrides, _resolve_opts: resolve_opts} = assigns) do
+  defp render_node(
+         %{node: raw_node, _overrides: overrides, _resolve_opts: resolve_opts} = assigns
+       ) do
     {node, override} = apply_override(raw_node, overrides)
     {module, subject} = resolve_component(node, override, resolve_opts)
     children_by_region = pre_render_children(node.children || [], overrides, resolve_opts)
@@ -56,13 +59,16 @@ defmodule AshSDUI.Components.SDUIRoot do
   end
 
   defp render_component(module, subject, props, region, children) do
-    assigns = %{
-      subject: subject,
-      props: props,
-      region: region,
-      children: children,
-      __changed__: nil
-    }
+    assigns =
+      props
+      |> Map.new()
+      |> Map.merge(%{
+        subject: subject,
+        props: props,
+        region: region,
+        children: children,
+        __changed__: nil
+      })
 
     case module.render(assigns) do
       result when is_binary(result) -> Phoenix.HTML.raw(result)
@@ -73,7 +79,13 @@ defmodule AshSDUI.Components.SDUIRoot do
   defp resolve_component(node, override, resolve_opts) do
     case component_module(node, override) do
       {:ok, module} ->
-        subject = Map.get(override, :subject, AshSDUI.Calculations.ResolveSubject.resolve(node, resolve_opts))
+        subject =
+          Map.get(
+            override,
+            :subject,
+            AshSDUI.Calculations.ResolveSubject.resolve(node, resolve_opts)
+          )
+
         {module, subject}
 
       :error ->
@@ -129,13 +141,17 @@ defmodule AshSDUI.Components.SDUIRoot do
     props = merged_props(node, override)
 
     if module do
-      module.render(%{
-        subject: subject,
-        props: props,
-        region: node.region,
-        children: children_by_region,
-        __changed__: nil
-      })
+      module.render(
+        props
+        |> Map.new()
+        |> Map.merge(%{
+          subject: subject,
+          props: props,
+          region: node.region,
+          children: children_by_region,
+          __changed__: nil
+        })
+      )
     else
       html_placeholder(node, overrides, resolve_opts)
     end
@@ -174,10 +190,16 @@ defmodule AshSDUI.Components.SDUIRoot do
 
     updated_node =
       node
-      |> Map.put(:component_name, Map.get(override, :component_name, Map.get(override, :component, node.component_name)))
+      |> Map.put(
+        :component_name,
+        Map.get(override, :component_name, Map.get(override, :component, node.component_name))
+      )
       |> Map.put(:static_props, merged_props(node, override))
       |> Map.put(:subject_resource, Map.get(override, :subject_resource, node.subject_resource))
-      |> Map.put(:subject_id, normalize_subject_id(Map.get(override, :subject_id, node.subject_id)))
+      |> Map.put(
+        :subject_id,
+        normalize_subject_id(Map.get(override, :subject_id, node.subject_id))
+      )
       |> Map.put(:children, children)
 
     {updated_node, override}

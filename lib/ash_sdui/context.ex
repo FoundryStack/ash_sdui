@@ -1,6 +1,6 @@
 defmodule AshSDUI.Context do
   @moduledoc """
-  Runtime presentation context used while resolving SDUI screens.
+  Runtime presentation context used while resolving SDUI views.
 
   The context is intentionally generic. Applications can pass actors, tenants,
   audiences, device hints, locale, or arbitrary assigns without AshSDUI baking in

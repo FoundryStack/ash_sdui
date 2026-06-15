@@ -30,36 +30,36 @@ defmodule AshSDUI.ResourceExtensionTest do
       assert Info.default_component(NoDefault) == nil
     end
 
-    test "defines ui_action entities" do
-      actions = Info.ui_actions(WithActions)
+    test "defines ui_intent entities" do
+      actions = Info.ui_intents(WithActions)
 
       assert length(actions) == 3
       assert Enum.any?(actions, &(&1.name == :create))
-      assert Enum.any?(actions, &(&1.intent == :destructive))
+      assert Enum.any?(actions, &(&1.style == :destructive))
     end
 
-    test "ui_action defaults intent to :secondary" do
-      [action] = Info.ui_actions(ActionDefaults)
+    test "ui_intent defaults style to :secondary" do
+      [action] = Info.ui_intents(ActionDefaults)
 
-      assert action.intent == :secondary
+      assert action.style == :secondary
     end
 
-    test "ui_action accepts optional label and icon" do
-      [action] = Info.ui_actions(ActionAttrs)
+    test "ui_intent accepts optional label and icon" do
+      [action] = Info.ui_intents(ActionAttrs)
 
       assert action.label == "Send Form"
       assert action.icon == "send"
     end
 
-    test "defines ui_attribute entities" do
-      attrs = Info.ui_attributes(WithAttrs)
+    test "defines ui_field entities" do
+      attrs = Info.ui_fields(WithAttrs)
 
       assert length(attrs) == 3
       assert Enum.any?(attrs, &(&1.name == :name))
     end
 
-    test "ui_attribute defaults" do
-      [attr] = Info.ui_attributes(AttrDefaults)
+    test "ui_field defaults" do
+      [attr] = Info.ui_fields(AttrDefaults)
 
       assert attr.name == :status
       assert attr.hidden == false
@@ -68,8 +68,8 @@ defmodule AshSDUI.ResourceExtensionTest do
       assert attr.widget == nil
     end
 
-    test "ui_attribute accepts widget metadata" do
-      [attr] = Info.ui_attributes(AttrWidget)
+    test "ui_field accepts widget metadata" do
+      [attr] = Info.ui_fields(AttrWidget)
       assert attr.widget == :textarea
     end
 
@@ -78,14 +78,14 @@ defmodule AshSDUI.ResourceExtensionTest do
   end
 
   describe "label_key i18n support" do
-    test "ui_action accepts label_key" do
-      [action] = Info.ui_actions(LabelKey)
+    test "ui_intent accepts label_key" do
+      [action] = Info.ui_intents(LabelKey)
       assert action.label_key == "player.action.create"
       assert action.label == nil
     end
 
-    test "ui_attribute accepts label_key" do
-      attrs = Info.ui_attributes(AttrLabelKey)
+    test "ui_field accepts label_key" do
+      attrs = Info.ui_fields(AttrLabelKey)
       name_attr = Enum.find(attrs, &(&1.name == :name))
       score_attr = Enum.find(attrs, &(&1.name == :score))
 
@@ -96,7 +96,7 @@ defmodule AshSDUI.ResourceExtensionTest do
     end
 
     test "resolve_label/2 returns hardcoded label when present" do
-      attr = %AshSDUI.Resource.UiAttribute{
+      attr = %AshSDUI.Resource.UiField{
         name: :score,
         label: "High Score",
         label_key: nil,
@@ -108,7 +108,7 @@ defmodule AshSDUI.ResourceExtensionTest do
     end
 
     test "resolve_label/2 falls back to titlecased name when no label or key" do
-      attr = %AshSDUI.Resource.UiAttribute{
+      attr = %AshSDUI.Resource.UiField{
         name: :first_name,
         label: nil,
         label_key: nil,
@@ -122,7 +122,7 @@ defmodule AshSDUI.ResourceExtensionTest do
     end
 
     test "resolve_label/2 falls back to name string when backend not loaded" do
-      attr = %AshSDUI.Resource.UiAttribute{
+      attr = %AshSDUI.Resource.UiField{
         name: :username,
         label: nil,
         label_key: "user.username",

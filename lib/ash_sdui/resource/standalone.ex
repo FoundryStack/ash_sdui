@@ -13,8 +13,9 @@ defmodule AshSDUI.Resource.Standalone do
         sdui do
           for_resource MyApp.Player
           default_component "Player.Card@v1"
-          ui_action :create, intent: :primary, label: "New Player"
-          ui_attribute :name, label: "Player Name"
+          view :index, recipe: :collection, read_action: :read
+          ui_intent :create, style: :primary, target: {:navigate, "/players/new"}
+          ui_field :name, label: "Player Name"
         end
       end
   """

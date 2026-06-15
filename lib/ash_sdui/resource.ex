@@ -1,18 +1,19 @@
 defmodule AshSDUI.Resource do
   @moduledoc """
-  Spark DSL extension for annotating Ash Resources with SDUI metadata.
+  Spark DSL extension for annotating Ash resources with compact UI metadata.
 
-  ## Usage as an Ash extension (inline annotations)
+  ## Usage as an Ash extension
 
       use Ash.Resource, extensions: [AshSDUI.Resource]
 
       sdui do
         default_component "Player.Card@v1"
-        ui_action :create, intent: :primary, label: "New Player"
-        ui_attribute :name, label: "Player Name"
+        view :index, recipe: :collection, read_action: :read
+        ui_intent :create, style: :primary, target: {:navigate, "/players/new"}
+        ui_field :name, label: "Player Name"
       end
 
-  ## Usage as a standalone UI metadata module (separation of concerns)
+  ## Usage as a standalone UI metadata module
 
       defmodule MyApp.UI.Resources.PlayerUI do
         use AshSDUI.Resource.Standalone
@@ -20,68 +21,59 @@ defmodule AshSDUI.Resource do
         sdui do
           for_resource MyApp.Player
           default_component "Player.Card@v1"
-          ui_action :create, intent: :primary, label: "New Player"
-          ui_attribute :name, label: "Player Name"
+          view :index, recipe: :collection, read_action: :read
+          ui_intent :create, style: :primary, target: {:navigate, "/players/new"}
+          ui_field :name, label: "Player Name"
         end
       end
 
-  The standalone form keeps domain resources free of UI concerns. The `for_resource`
-  declaration is used by the verifier to validate action names and by the storybook
-  integration.
-
-  See `AshSDUI.Resource.Info` for introspection API.
+  See `AshSDUI.Resource.Info` for the introspection API used by generated views.
   """
 
-  @ui_action %Spark.Dsl.Entity{
-    name: :ui_action,
-    describe: "UI action metadata",
-    examples: ["ui_action :create, intent: :primary, label: \"New Player\""],
+  @view %Spark.Dsl.Entity{
+    name: :view,
+    describe: "View-level presentation metadata",
+    examples: ["view :index, recipe: :collection, read_action: :read, query: :default"],
     args: [:name],
-    target: AshSDUI.Resource.UiAction,
+    target: AshSDUI.Resource.View,
     schema: [
-      name: [
+      name: [type: :atom, required: true, doc: "View name such as :index, :show, :new, or :edit"],
+      recipe: [type: :atom, doc: "Layout recipe used to render this view"],
+      action: [type: :atom, doc: "Ash action backing this view"],
+      read_action: [type: :atom, doc: "Read action backing collection/detail views"],
+      layout: [type: :atom, doc: "Optional named app layout hint"],
+      title: [type: :string, doc: "Default view title"],
+      empty_state: [type: :string, doc: "Default empty state copy"],
+      query: [type: :atom, doc: "Named query schema used by this view"]
+    ]
+  }
+
+  @ui_intent %Spark.Dsl.Entity{
+    name: :ui_intent,
+    describe: "Generic UI intent metadata",
+    examples: ["ui_intent :create, style: :primary, target: {:ash_action, :create}"],
+    args: [:name],
+    target: AshSDUI.Resource.UiIntent,
+    schema: [
+      name: [type: :atom, required: true, doc: "Intent name"],
+      style: [
         type: :atom,
-        required: true,
-        doc: "Action name (must exist on the resource)"
-      ],
-      intent: [
-        type: {:one_of, [:primary, :secondary, :destructive, :info]},
         default: :secondary,
-        doc: "Visual intent: primary, secondary, destructive, or info"
+        doc: "Visual style hint such as :primary or :destructive"
       ],
-      label: [
-        type: :string,
-        doc: "Display label for the action (takes precedence over label_key)"
-      ],
-      label_key: [
-        type: :string,
-        doc:
-          "Gettext message key for the action label (resolved at runtime via configured backend)"
-      ],
-      icon: [
-        type: :string,
-        doc: "Icon name or identifier"
-      ],
+      label: [type: :string, doc: "Display label for the intent"],
+      label_key: [type: :string, doc: "Gettext message key for the intent label"],
+      icon: [type: :string, doc: "Icon name or identifier"],
       component_override: [
         type: :string,
-        doc: "Optional component name to render this action differently"
+        doc: "Optional component name to render this intent differently"
       ],
-      kind: [
-        type: {:one_of, [:link, :event, :submit]},
-        doc: "Default interaction kind when rendering the action"
+      target: [
+        type: :any,
+        doc:
+          "Intent target such as {:ash_action, :publish}, {:navigate, \"/posts/new\"}, or {:event, \"refresh\"}"
       ],
-      to: [
-        type: :string,
-        doc: "Route template or static path for link actions"
-      ],
-      event: [
-        type: :string,
-        doc: "LiveView event name for event actions"
-      ],
-      confirm: [
-        type: {:or, [:boolean, :string]},
-        doc: "Confirmation flag or message for destructive/event actions"
-      ],
+      confirm: [type: {:or, [:boolean, :string]}, doc: "Confirmation flag or message"],
       placement: [
         type: :atom,
         doc: "Preferred placement such as :toolbar, :row, :form_footer, or :inline"
@@ -89,132 +81,90 @@ defmodule AshSDUI.Resource do
       requires_actor?: [
         type: :boolean,
         default: false,
-        doc: "Whether this action should be hidden when no actor is present"
+        doc: "Whether this intent should be hidden when no actor is present"
       ],
-      visible_when: [
-        type: :atom,
-        doc: "Named application predicate used by variant resolvers"
-      ]
+      visible_when: [type: :atom, doc: "Named application predicate used by variant resolvers"]
     ]
   }
 
-  @screen %Spark.Dsl.Entity{
-    name: :screen,
-    describe: "Screen-level presentation metadata",
-    examples: ["screen :index, recipe: :card_grid, read_action: :read"],
+  @ui_field %Spark.Dsl.Entity{
+    name: :ui_field,
+    describe: "Generic UI field metadata",
+    examples: ["ui_field :name, label: \"Player Name\", order: 1, binding: :record"],
     args: [:name],
-    target: AshSDUI.Resource.Screen,
+    target: AshSDUI.Resource.UiField,
     schema: [
-      name: [
-        type: :atom,
-        required: true,
-        doc: "Screen name such as :index, :show, :new, or :edit"
-      ],
-      recipe: [
-        type: :atom,
-        doc: "Layout recipe used to render this screen"
-      ],
-      action: [
-        type: :atom,
-        doc: "Ash action backing this screen"
-      ],
-      read_action: [
-        type: :atom,
-        doc: "Read action backing index/show style screens"
-      ],
-      layout: [
-        type: :atom,
-        doc: "Optional named app layout hint"
-      ],
-      title: [
-        type: :string,
-        doc: "Default screen title"
-      ],
-      empty_state: [
-        type: :string,
-        doc: "Default empty state copy"
-      ]
-    ]
-  }
-
-  @ui_attribute %Spark.Dsl.Entity{
-    name: :ui_attribute,
-    describe: "UI attribute metadata",
-    examples: ["ui_attribute :name, label: \"Player Name\", order: 1"],
-    args: [:name],
-    target: AshSDUI.Resource.UiAttribute,
-    schema: [
-      name: [
-        type: :atom,
-        required: true,
-        doc: "Attribute name"
-      ],
-      label: [
-        type: :string,
-        doc: "Display label (takes precedence over label_key)"
-      ],
-      label_key: [
-        type: :string,
-        doc:
-          "Gettext message key for the attribute label (resolved at runtime via configured backend)"
-      ],
-      icon: [
-        type: :string,
-        doc: "Icon name or identifier"
-      ],
-      hidden: [
-        type: :boolean,
-        default: false,
-        doc: "Whether to hide this attribute by default"
-      ],
+      name: [type: :atom, required: true, doc: "Field name"],
+      label: [type: :string, doc: "Display label (takes precedence over label_key)"],
+      label_key: [type: :string, doc: "Gettext message key for the field label"],
+      icon: [type: :string, doc: "Icon name or identifier"],
+      hidden: [type: :boolean, default: false, doc: "Whether to hide this field by default"],
       widget: [
         type: {:one_of, [:text_input, :textarea, :email, :checkbox, :datetime]},
-        doc: "Preferred form widget when this attribute is rendered in a generated form"
+        doc: "Preferred form widget for generated forms"
       ],
       field_component: [
         type: :atom,
-        doc: "Optional Phoenix component module used to render this field in generated forms"
+        doc: "Optional Phoenix component module used to render this field"
       ],
-      show?: [
-        type: :boolean,
-        doc: "Whether to show this attribute on detail screens"
-      ],
-      index?: [
-        type: :boolean,
-        doc: "Whether to show this attribute on collection screens"
-      ],
-      form?: [
-        type: :boolean,
-        doc: "Whether to show this attribute on form screens"
-      ],
+      show?: [type: :boolean, doc: "Whether to show this field on detail views"],
+      index?: [type: :boolean, doc: "Whether to show this field on collection views"],
+      form?: [type: :boolean, doc: "Whether to show this field on form views"],
       filter?: [
         type: :boolean,
         default: false,
-        doc: "Whether this attribute can be used as a generated filter"
+        doc: "Whether this field can be used as a generated filter"
       ],
       sortable?: [
         type: :boolean,
         default: false,
-        doc: "Whether this attribute can be used as a generated sort"
+        doc: "Whether this field can be used as a generated sort"
       ],
-      format: [
-        type: :atom,
-        doc: "Named formatter hint such as :relative_datetime, :currency, or :badge"
-      ],
-      empty_state: [
-        type: :string,
-        doc: "Fallback text when this field is blank"
-      ],
+      format: [type: :atom, doc: "Named formatter hint"],
+      empty_state: [type: :string, doc: "Fallback text when this field is blank"],
       badge?: [
         type: :boolean,
         default: false,
         doc: "Whether this field prefers badge-style rendering"
       ],
-      order: [
-        type: :non_neg_integer,
-        default: 0,
-        doc: "Display order (lower first)"
-      ]
+      binding: [type: :atom, doc: "Binding name this field reads from"],
+      order: [type: :non_neg_integer, default: 0, doc: "Display order (lower first)"]
+    ]
+  }
+
+  @ui_binding %Spark.Dsl.Entity{
+    name: :ui_binding,
+    describe: "Named data binding metadata",
+    examples: ["ui_binding :record, source: {:resource, MyApp.Post}"],
+    args: [:name],
+    target: AshSDUI.Resource.UiBinding,
+    schema: [
+      name: [type: :atom, required: true, doc: "Binding name"],
+      source: [
+        type: :any,
+        required: true,
+        doc:
+          "Binding source such as {:resource, MyApp.Post}, {:relationship, :comments}, or {:assign, :current_user}"
+      ],
+      many?: [type: :boolean, doc: "Whether the binding resolves to many records"],
+      query: [type: :atom, doc: "Named query schema applied when loading the binding"],
+      default: [type: :any, doc: "Fallback value if the binding cannot be resolved"]
+    ]
+  }
+
+  @ui_query %Spark.Dsl.Entity{
+    name: :ui_query,
+    describe: "Named query-state metadata",
+    examples: ["ui_query :default, search: [:title], sort: [:inserted_at], filters: [:status]"],
+    args: [:name],
+    target: AshSDUI.Resource.UiQuery,
+    schema: [
+      name: [type: :atom, required: true, doc: "Query schema name"],
+      search: [type: {:list, :atom}, doc: "Fields supported by full-text search"],
+      sort: [type: {:list, :atom}, doc: "Fields supported by generated sorting"],
+      filters: [type: {:list, :atom}, doc: "Fields supported by generated filtering"],
+      default_sort: [type: :any, doc: "Default sort specification"],
+      default_limit: [type: :pos_integer, doc: "Default page size"]
     ]
   }
 
@@ -230,17 +180,14 @@ defmodule AshSDUI.Resource do
         type: :atom,
         doc: "The Ash resource this UI module annotates (used in standalone mode)"
       ],
-      gettext_backend: [
-        type: :atom,
-        doc: "Gettext backend module for resolving label_key values (e.g. MyApp.Gettext)"
-      ],
+      gettext_backend: [type: :atom, doc: "Gettext backend module for resolving label_key values"],
       gettext_domain: [
         type: :string,
         default: "sdui",
-        doc: "Gettext domain for label_key lookups (default: \"sdui\")"
+        doc: "Gettext domain for label_key lookups"
       ]
     ],
-    entities: [@screen, @ui_action, @ui_attribute]
+    entities: [@view, @ui_intent, @ui_field, @ui_binding, @ui_query]
   }
 
   use Spark.Dsl.Extension,

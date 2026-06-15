@@ -1,14 +1,27 @@
-defmodule AshSDUI.Components.ResourceForm do
+defmodule AshSDUI.Components.RecordForm do
   @moduledoc """
   DaisyUI-backed form generated from `AshSDUI.Form.fields/2` metadata.
   """
 
   use Phoenix.Component
 
+  AshSDUI.Registry.register("AshSDUI.RecordForm@v1", __MODULE__, %{
+    fragment: "",
+    subject_types: []
+  })
+
+  def __ash_sdui_component_name__, do: "AshSDUI.RecordForm@v1"
+  def __ash_sdui_fragment__, do: ""
+  def __ash_sdui_subject_types__, do: []
+
   attr(:form, :any, required: true)
-  attr(:resource, :atom, required: true)
+  attr(:ui, :atom, required: true)
   attr(:action, :atom, required: true)
   attr(:fields, :list, default: nil)
+  attr(:view, :any, default: nil)
+  attr(:bindings, :map, default: %{})
+  attr(:state, :any, default: nil)
+  attr(:context, :any, default: nil)
   attr(:change_event, :string, default: "validate")
   attr(:submit_event, :string, default: "save")
   attr(:field_overrides, :map, default: %{})
@@ -18,7 +31,7 @@ defmodule AshSDUI.Components.ResourceForm do
 
   def render(assigns) do
     fields =
-      (assigns.fields || AshSDUI.Form.fields(assigns.resource, assigns.action))
+      (assigns.fields || AshSDUI.Form.fields(assigns.ui, assigns.action))
       |> Enum.map(&apply_override(&1, Map.get(assigns.field_overrides, &1.name, %{})))
 
     assigns = assign(assigns, :fields, fields)

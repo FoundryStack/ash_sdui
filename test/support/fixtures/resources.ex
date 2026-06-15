@@ -24,10 +24,10 @@ defmodule AshSDUI.TestFixtures.FormResource do
 
   sdui do
     default_component("Form.Card@v1")
-    ui_attribute(:title, label: "Title", order: 1)
-    ui_attribute(:body, label: "Body", order: 2, widget: :textarea)
-    ui_attribute(:email, label: "Email", order: 3, widget: :email)
-    ui_attribute(:internal_note, label: "Internal", order: 4, hidden: true)
+    ui_field(:title, label: "Title", order: 1)
+    ui_field(:body, label: "Body", order: 2, widget: :textarea)
+    ui_field(:email, label: "Email", order: 3, widget: :email)
+    ui_field(:internal_note, label: "Internal", order: 4, hidden: true)
   end
 end
 
@@ -47,7 +47,7 @@ defmodule AshSDUI.TestFixtures.ComponentFormResource do
 
   sdui do
     default_component("Component.Form@v1")
-    ui_attribute(:body, field_component: ExampleFieldComponent)
+    ui_field(:body, field_component: ExampleFieldComponent)
   end
 end
 
@@ -98,13 +98,13 @@ defmodule AshSDUI.TestFixtures.ScreenArticle do
   sdui do
     default_component("Article.Card@v1")
 
-    ui_action(:create, intent: :primary, label: "New Article")
-    ui_action(:update, intent: :secondary, label: "Edit")
-    ui_action(:destroy, intent: :destructive, label: "Delete")
+    ui_intent(:create, style: :primary, label: "New Article", target: {:ash_action, :create})
+    ui_intent(:update, style: :secondary, label: "Edit", target: {:ash_action, :update})
+    ui_intent(:destroy, style: :destructive, label: "Delete", target: {:ash_action, :destroy})
 
-    ui_attribute(:title, label: "Title", order: 1)
-    ui_attribute(:body, label: "Body", order: 2, widget: :textarea)
-    ui_attribute(:internal_notes, label: "Internal", order: 3)
+    ui_field(:title, label: "Title", order: 1)
+    ui_field(:body, label: "Body", order: 2, widget: :textarea)
+    ui_field(:internal_notes, label: "Internal", order: 3)
   end
 end
 
@@ -115,30 +115,28 @@ defmodule AshSDUI.TestFixtures.ScreenArticleUI do
     for_resource(AshSDUI.TestFixtures.ScreenArticle)
     default_component("Article.Card@v1")
 
-    screen(:index, recipe: :collection, read_action: :read, title: "Articles")
-    screen(:show, recipe: :detail, read_action: :read)
-    screen(:new, recipe: :form, action: :create)
+    view(:index, recipe: :collection, read_action: :read, title: "Articles")
+    view(:show, recipe: :detail, read_action: :read)
+    view(:new, recipe: :form, action: :create)
 
-    ui_action(:create,
-      intent: :primary,
+    ui_intent(:create,
+      style: :primary,
       label: "New Article",
-      kind: :link,
-      to: "/articles/new",
+      target: {:navigate, "/articles/new"},
       placement: :toolbar
     )
 
-    ui_action(:update,
-      intent: :secondary,
+    ui_intent(:update,
+      style: :secondary,
       label: "Edit",
-      kind: :link,
-      to: "/articles/:id/edit",
+      target: {:navigate, "/articles/:id/edit"},
       placement: :row,
       requires_actor?: true
     )
 
-    ui_attribute(:title, label: "Title", order: 1, index?: true, show?: true, form?: true)
+    ui_field(:title, label: "Title", order: 1, index?: true, show?: true, form?: true)
 
-    ui_attribute(:body,
+    ui_field(:body,
       label: "Body",
       order: 2,
       widget: :textarea,
@@ -147,7 +145,7 @@ defmodule AshSDUI.TestFixtures.ScreenArticleUI do
       form?: true
     )
 
-    ui_attribute(:internal_notes,
+    ui_field(:internal_notes,
       label: "Internal",
       order: 3,
       index?: false,
@@ -195,9 +193,9 @@ defmodule AshSDUI.TestFixtures.LiveResourcePostUI do
 
   sdui do
     for_resource(AshSDUI.TestFixtures.LiveResourcePost)
-    screen(:index, recipe: :collection, read_action: :read, title: "Posts")
-    ui_action(:create, intent: :primary, label: "New Post", kind: :link, to: "/posts/new")
-    ui_attribute(:title, label: "Title", index?: true)
+    view(:index, recipe: :collection, read_action: :read, title: "Posts")
+    ui_intent(:create, style: :primary, label: "New Post", target: {:navigate, "/posts/new"})
+    ui_field(:title, label: "Title", index?: true)
   end
 end
 
@@ -361,9 +359,9 @@ defmodule AshSDUI.TestFixtures.ResourceExtension.WithActions do
   end
 
   sdui do
-    ui_action(:create, intent: :primary, label: "New Player", icon: "plus")
-    ui_action(:update, intent: :secondary)
-    ui_action(:delete, intent: :destructive, icon: "trash")
+    ui_intent(:create, style: :primary, label: "New Player", icon: "plus")
+    ui_intent(:update, style: :secondary)
+    ui_intent(:delete, style: :destructive, icon: "trash")
   end
 end
 
@@ -383,7 +381,7 @@ defmodule AshSDUI.TestFixtures.ResourceExtension.ActionDefaults do
   end
 
   sdui do
-    ui_action(:view)
+    ui_intent(:view)
   end
 end
 
@@ -403,7 +401,7 @@ defmodule AshSDUI.TestFixtures.ResourceExtension.ActionAttrs do
   end
 
   sdui do
-    ui_action(:submit, label: "Send Form", icon: "send")
+    ui_intent(:submit, label: "Send Form", icon: "send")
   end
 end
 
@@ -411,9 +409,9 @@ defmodule AshSDUI.TestFixtures.ResourceExtension.WithAttrs do
   use Ash.Resource, domain: nil, extensions: [AshSDUI.Resource]
 
   sdui do
-    ui_attribute(:name, label: "Player Name", order: 1)
-    ui_attribute(:email, label: "Email Address", order: 2, hidden: true)
-    ui_attribute(:created_at)
+    ui_field(:name, label: "Player Name", order: 1)
+    ui_field(:email, label: "Email Address", order: 2, hidden: true)
+    ui_field(:created_at)
   end
 end
 
@@ -421,7 +419,7 @@ defmodule AshSDUI.TestFixtures.ResourceExtension.AttrDefaults do
   use Ash.Resource, domain: nil, extensions: [AshSDUI.Resource]
 
   sdui do
-    ui_attribute(:status)
+    ui_field(:status)
   end
 end
 
@@ -429,7 +427,7 @@ defmodule AshSDUI.TestFixtures.ResourceExtension.AttrWidget do
   use Ash.Resource, domain: nil, extensions: [AshSDUI.Resource]
 
   sdui do
-    ui_attribute(:body, widget: :textarea)
+    ui_field(:body, widget: :textarea)
   end
 end
 
@@ -449,7 +447,7 @@ defmodule AshSDUI.TestFixtures.ResourceExtension.LabelKey do
   end
 
   sdui do
-    ui_action(:create, label_key: "player.action.create", icon: "plus")
+    ui_intent(:create, label_key: "player.action.create", icon: "plus")
   end
 end
 
@@ -457,8 +455,8 @@ defmodule AshSDUI.TestFixtures.ResourceExtension.AttrLabelKey do
   use Ash.Resource, domain: nil, extensions: [AshSDUI.Resource]
 
   sdui do
-    ui_attribute(:name, label_key: "player.name")
-    ui_attribute(:score, label: "High Score")
+    ui_field(:name, label_key: "player.name")
+    ui_field(:score, label: "High Score")
   end
 end
 
@@ -475,5 +473,73 @@ defmodule AshSDUI.TestFixtures.ResourceExtension.DefaultDomainResource do
   use Ash.Resource, domain: nil, extensions: [AshSDUI.Resource]
 
   sdui do
+  end
+end
+
+defmodule AshSDUI.TestFixtures.ViewArticleUI do
+  use AshSDUI.Resource.Standalone
+
+  sdui do
+    for_resource(AshSDUI.TestFixtures.ScreenArticle)
+    default_component("Article.Card@v1")
+
+    view(:index, recipe: :collection, read_action: :read, title: "Knowledge Base", query: :default)
+    view(:show, recipe: :detail, read_action: :read)
+    view(:new, recipe: :form, action: :create)
+
+    ui_query(:default,
+      search: [:title],
+      sort: [:title],
+      filters: [:title],
+      default_sort: [title: :asc],
+      default_limit: 25
+    )
+
+    ui_binding(:collection,
+      source: {:resource, AshSDUI.TestFixtures.ScreenArticle},
+      many?: true,
+      query: :default
+    )
+
+    ui_binding(:record,
+      source: {:resource, AshSDUI.TestFixtures.ScreenArticle},
+      many?: false
+    )
+
+    ui_intent(:create,
+      style: :primary,
+      label: "New Article",
+      target: {:navigate, "/articles/new"},
+      placement: :toolbar
+    )
+
+    ui_intent(:update,
+      style: :secondary,
+      label: "Edit",
+      target: {:ash_action, :update},
+      placement: :row,
+      requires_actor?: true
+    )
+
+    ui_field(:title,
+      label: "Title",
+      order: 1,
+      index?: true,
+      show?: true,
+      form?: true,
+      filter?: true,
+      sortable?: true,
+      binding: :collection
+    )
+
+    ui_field(:body,
+      label: "Body",
+      order: 2,
+      widget: :textarea,
+      index?: false,
+      show?: true,
+      form?: true,
+      binding: :record
+    )
   end
 end
