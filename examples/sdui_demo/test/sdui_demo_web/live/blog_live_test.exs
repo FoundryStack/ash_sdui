@@ -5,6 +5,7 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
 
   setup do
     AshSDUI.Registry.init_table()
+    clear_blog_fixtures()
 
     {:ok, user} =
       SduiDemo.Accounts.User
@@ -45,6 +46,19 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
       |> Ash.create()
 
     {:ok, user: user, post: post}
+  end
+
+  defp clear_blog_fixtures do
+    destroy_all(SduiDemo.Blog.Comment)
+    destroy_all(SduiDemo.Blog.Post)
+    destroy_all(SduiDemo.Accounts.User)
+  end
+
+  defp destroy_all(resource) do
+    case Ash.read(resource) do
+      {:ok, records} -> Enum.each(records, &Ash.destroy!/1)
+      _ -> :ok
+    end
   end
 
   describe "posts index" do
@@ -104,11 +118,63 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
       assert html =~ "Headline"
       assert html =~ "Published"
       assert html =~ "Compose Post"
-      assert html =~ "Open"
+      assert html =~ "Open Generated"
       assert html =~ "Revise"
       assert html =~ post.title
       assert html =~ "<table"
       refute html =~ ~s(data-testid="editorial-feed")
+    end
+
+    test "generated index exposes query controls and syncs search params", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/posts/generated")
+
+      assert html =~ "Search"
+      assert html =~ "Reset"
+
+      view
+      |> form("form[phx-change='query']", %{"search" => "Test"})
+      |> render_change()
+
+      assert_patch(view, "/posts/generated?limit=10&search=Test&sort=-published_at")
+      assert render(view) =~ ~s(value="Test")
+    end
+
+    test "generated index toggles sort and pagination in params", %{conn: conn} do
+      {:ok, [user | _]} = Ash.read(SduiDemo.Accounts.User)
+
+      Enum.each(1..10, fn index ->
+        SduiDemo.Blog.Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "Extra Post #{index}",
+          body: "More rows for pagination coverage.",
+          author_id: user.id
+        })
+        |> Ash.create!()
+      end)
+
+      {:ok, view, _html} = live(conn, "/posts/generated")
+
+      view
+      |> element("button[phx-click='sort'][phx-value-field='title']")
+      |> render_click()
+
+      assert_patch(view, "/posts/generated?limit=10&sort=title")
+
+      view
+      |> element("button[phx-click='paginate'][phx-value-offset='10']")
+      |> render_click()
+
+      assert_patch(view, "/posts/generated?limit=10&offset=10&sort=title")
+    end
+
+    test "generated index resets query params", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/posts/generated?search=Test&sort=title&offset=10")
+
+      view
+      |> element("button[phx-click='reset_query']")
+      |> render_click()
+
+      assert_patch(view, "/posts/generated?limit=10&sort=-published_at")
     end
   end
 
@@ -237,6 +303,14 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
 
       assert html =~ "Edit Post"
       assert html =~ post.title
+    end
+
+    test "generated detail route renders through view metadata", %{conn: conn, post: post} do
+      {:ok, _view, html} = live(conn, "/posts/generated/#{post.id}")
+
+      assert html =~ post.title
+      assert html =~ post.body
+      assert html =~ ~s(data-testid="record-detail")
     end
 
     test "creates a new post successfully", %{conn: conn} do

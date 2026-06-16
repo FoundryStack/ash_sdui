@@ -42,10 +42,12 @@ defmodule SduiDemoWeb.Components.Layouts.PostFormPageLayout do
             fields={@fields}
             change_event="validate"
             submit_event="save"
-            field_overrides={%{
-              title: %{class: "h-15 text-3xl font-semibold tracking-normal"},
-              body: %{class: "min-h-80 text-base leading-7"}
-            }}
+            field_overrides={
+              %{
+                title: %{class: "h-15 text-3xl font-semibold tracking-normal"},
+                body: %{class: "min-h-80 text-base leading-7"}
+              }
+            }
           >
             <:extra_fields :if={@live_action == :new}>
               <fieldset class="fieldset">

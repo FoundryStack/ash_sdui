@@ -20,7 +20,7 @@ defmodule SduiDemoWeb.Live.GeneratedPostsLive do
         },
         intents: %{
           create: %{label: "Compose Post"},
-          read: %{label: "Open"},
+          read: %{label: "Open Generated", target: {:navigate, "/posts/generated/:id"}},
           update: %{label: "Revise"}
         },
         toolbar: [props: %{class: "justify-between items-center"}],

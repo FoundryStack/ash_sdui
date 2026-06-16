@@ -133,7 +133,7 @@ defmodule AshSDUI.Query do
   defp maybe_add_search(filters, search, fields) do
     keyword_filters =
       Enum.map(fields, fn field ->
-        {field, [ilike: "%#{search}%"]}
+        {field, [contains: search]}
       end)
 
     [[or: keyword_filters] | filters]

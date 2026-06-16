@@ -18,7 +18,7 @@ defmodule AshSDUI.QueryTest do
 
     opts = Query.to_ash_opts(query)
 
-    assert Keyword.get(opts, :filter) == [[or: [title: [ilike: "%launch%"]]]]
+    assert Keyword.get(opts, :filter) == [[or: [title: [contains: "launch"]]]]
     assert Keyword.get(opts, :sort) == [{:title, :desc}]
     assert Keyword.get(opts, :page) == [offset: 20, limit: 10]
   end

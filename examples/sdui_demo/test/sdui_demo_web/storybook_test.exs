@@ -12,10 +12,16 @@ defmodule SduiDemoWeb.StorybookTest do
       |> Enum.map(& &1.path)
 
     assert "/components/editorial_posts_page" in paths
+    assert "/components/post_ui_show" in paths
+    assert "/components/post_ui_new" in paths
+    assert "/components/post_ui_edit" in paths
+    assert "/components/post_ui_filtered" in paths
     assert "/components/post_publish_hint_field" in paths
     assert "/components/resource_actions" in paths
     assert "/components/resource_form" in paths
     assert "/components/user_card" in paths
+    assert "/layouts/raw_tree_showcase" in paths
+    assert "/layouts/persisted_layout_showcase" in paths
   end
 
   test "storybook redirects to the first discovered component story", %{conn: conn} do
@@ -25,13 +31,13 @@ defmodule SduiDemoWeb.StorybookTest do
   end
 
   test "storybook pages load the demo stylesheet", %{conn: conn} do
-    conn = get(conn, "/storybook/components/resource_actions")
+    conn = get(conn, "/storybook/components/post_ui_show")
 
     assert html_response(conn, 200) =~ ~s(@import "/assets/app.css?hash=)
   end
 
   test "storybook iframe loads the demo stylesheet from an absolute path", %{conn: conn} do
-    conn = get(conn, "/storybook/iframe/components/editorial_posts_page")
+    conn = get(conn, "/storybook/iframe/layouts/raw_tree_showcase")
 
     assert html_response(conn, 200) =~ ~s(@import "/assets/app.css?hash=)
   end

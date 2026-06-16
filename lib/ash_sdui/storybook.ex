@@ -75,6 +75,7 @@ defmodule AshSDUI.Storybook do
     recipe_overrides = Keyword.get(opts, :recipe_overrides, %{})
     assigns = Keyword.get(opts, :assigns, %{})
     bindings = Keyword.get(opts, :bindings, %{})
+    form = Keyword.get(opts, :form)
 
     view_opts =
       [
@@ -96,6 +97,7 @@ defmodule AshSDUI.Storybook do
     {:ok, tree} =
       AshSDUI.View.to_tree(view,
         bindings: bindings,
+        form: form,
         state: state,
         context: view.context
       )

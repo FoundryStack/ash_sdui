@@ -3,46 +3,93 @@ defmodule SduiDemoWeb.Live.DemoLive do
 
   @features [
     %{
+      icon: "View",
+      title: "View metadata",
+      desc:
+        "The demo resources now show `view`, `ui_field`, `ui_intent`, `ui_query`, and `ui_binding` as the public metadata vocabulary."
+    },
+    %{
+      icon: "Query",
+      title: "Query lifecycle",
+      desc:
+        "Search, filter, sort, pagination, and URL param sync are all visible on the generated collection route."
+    },
+    %{
       icon: "Recipe",
-      title: "Screen recipes",
+      title: "Recipe customization",
       desc:
-        "Start from Ash metadata, then let an app-side recipe shape an editorial page without throwing away the generated flow."
+        "The editorial journal route proves that `recipe_overrides` and an app recipe can reshape the same generated view contract."
     },
     %{
-      icon: "Generated",
-      title: "Override-first path",
+      icon: "Layout",
+      title: "Layout API tour",
       desc:
-        "The same metadata can also stay on the built-in recipe path, with copy, labels, and layout polish coming from recipe_overrides alone."
+        "Raw trees, code layouts, persisted layouts, and ephemeral runtime layouts each have a dedicated route so the public API stays concrete."
     },
     %{
-      icon: "LiveView",
-      title: "LiveResource engine",
-      desc:
-        "List, show, create, edit, validate, and submit stay conventional, so custom UI work lands on top of the same engine."
-    },
-    %{
-      icon: "Theme",
+      icon: "Storybook",
       title: "Storybook parity",
       desc:
-        "The demo app and Storybook now share the same Tailwind and DaisyUI path, which keeps component previews visually honest."
+        "Generated view stories, layout stories, and app-side components all share the same visual path as the demo routes."
+    }
+  ]
+
+  @showcases [
+    %{
+      tag: "Generated Views",
+      title: "Posts index and detail",
+      path: "/posts/generated",
+      secondary_path: "/posts/generated",
+      cta: "Open generated index",
+      secondary_cta: "Open a generated detail from the table",
+      api: "`AshSDUI.LiveResource` + built-in recipe",
+      desc:
+        "The built-in collection/detail path demonstrates metadata-driven fields, intents, query state, and the smallest override surface."
     },
     %{
-      icon: "Actions",
-      title: "Ash-aware actions",
+      tag: "Custom Recipe",
+      title: "Editorial journal",
+      path: "/posts",
+      secondary_path: "/storybook/components/editorial_posts_page",
+      cta: "Open editorial route",
+      secondary_cta: "Open editorial story",
+      api: "`layout: :sdui` + custom recipe",
       desc:
-        "Default resource actions still come from SDUI metadata, but the app decides where they live and how far to customize the surface."
+        "The same `PostUI.index` view renders through an app recipe and page component without giving up the generated engine underneath."
+    },
+    %{
+      tag: "Ephemeral Layouts",
+      title: "Post show layout switcher",
+      path: "/posts",
+      secondary_path: "/posts",
+      cta: "Open a post from the journal",
+      secondary_cta: "Switch standard, blog, and minimal modes",
+      api: "`AshSDUI.LiveScreen.assign_layout/3`",
+      desc:
+        "Per-record runtime layouts are rebuilt on the fly, then rendered through `SDUIRoot` with no persisted layout dependency."
+    },
+    %{
+      tag: "Layout API",
+      title: "Raw, code, and persisted layouts",
+      path: "/layouts/manage",
+      secondary_path: "/storybook/layouts/raw_tree_showcase",
+      cta: "Open layout tour",
+      secondary_cta: "Open layout stories",
+      api: "`AshSDUI.Layout` + `AshSDUI.Components.SDUIRoot`",
+      desc:
+        "The layout tour separates direct render trees, registered code layouts, and stored published layouts so each public path stays easy to explain."
     }
   ]
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :features, @features)}
+    {:ok, assign(socket, features: @features, showcases: @showcases)}
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <.demo_page_layout features={@features} />
+    <.demo_page_layout features={@features} showcases={@showcases} />
     """
   end
 

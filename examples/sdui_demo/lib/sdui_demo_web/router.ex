@@ -21,9 +21,14 @@ defmodule SduiDemoWeb.Router do
     live("/", Live.DemoLive)
     live("/posts", Live.PostsLive)
     live("/posts/generated", Live.GeneratedPostsLive)
+    live("/posts/generated/:id", Live.GeneratedPostShowLive)
     live("/posts/new", Live.PostFormLive, :new)
     live("/posts/:id", Live.PostShowLive)
     live("/posts/:id/edit", Live.PostFormLive, :edit)
+    live("/layouts/raw-tree", Live.RawTreeLive)
+    live("/layouts/code", Live.CodeLayoutLive)
+    live("/layouts/persisted", Live.PersistedLayoutLive)
+    live("/layouts/manage", Live.LayoutAdminLive)
 
     live_storybook("/storybook", backend_module: SduiDemoWeb.Storybook)
   end
