@@ -28,6 +28,10 @@ defmodule AshSDUI.Layout.Builder do
       order: Keyword.get(opts, :order, 0),
       subject_resource: normalize_resource(Keyword.get(opts, :subject_resource)),
       subject_id: normalize_subject_id(Keyword.get(opts, :subject_id)),
+      refresh: Keyword.get(opts, :refresh),
+      binding: Keyword.get(opts, :binding),
+      variant: Keyword.get(opts, :variant),
+      state_key: Keyword.get(opts, :state_key),
       static_props: Keyword.get(opts, :static_props, %{}),
       children: Keyword.get(opts, :children, [])
     }
@@ -52,8 +56,13 @@ defmodule AshSDUI.Layout.Builder do
       id: Keyword.get(opts, :id),
       region: Keyword.get(opts, :region, :default),
       order: Keyword.get(opts, :order, 0),
+      refresh: Keyword.get(opts, :refresh),
+      binding: Keyword.get(opts, :binding),
+      variant: Keyword.get(opts, :variant),
+      state_key: Keyword.get(opts, :state_key),
       subject_resource: subject_resource,
       subject_id: subject_id,
+      static_props: Keyword.get(opts, :static_props, %{}),
       children: Keyword.get(opts, :children, [])
     )
   end
@@ -89,6 +98,10 @@ defmodule AshSDUI.Layout.Builder do
       subject_id: node.subject_id,
       region: node.region,
       order: node.order,
+      refresh: node.refresh,
+      binding: node.binding,
+      variant: node.variant,
+      state_key: node.state_key,
       children:
         node.children
         |> List.wrap()

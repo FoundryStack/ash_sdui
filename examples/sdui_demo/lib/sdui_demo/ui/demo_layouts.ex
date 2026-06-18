@@ -6,9 +6,11 @@ defmodule SduiDemo.UI.DemoLayouts do
 
   @code_layout_name "demo-code-layout"
   @persisted_layout_name "demo-persisted-layout"
+  @hybrid_layout_name "demo-live-hybrid-layout"
 
   def code_layout_name, do: @code_layout_name
   def persisted_layout_name, do: @persisted_layout_name
+  def hybrid_layout_name, do: @hybrid_layout_name
 
   def register_code_layout do
     Layout.register(@code_layout_name, code_root())
@@ -93,6 +95,65 @@ defmodule SduiDemo.UI.DemoLayouts do
       persisted_statuses: persisted_statuses(persisted_nodes),
       persisted_node_count: persisted_node_count(persisted_nodes)
     }
+  end
+
+  def hybrid_root(intents) do
+    Builder.node("Layouts.TwoColumnLayout@v1",
+      id: "demo-live-hybrid-root",
+      children: [
+        Builder.node("AshSDUI.StatusBadge@v1",
+          id: "demo-live-hybrid-status",
+          region: :sidebar,
+          order: 0,
+          state_key: :workflow,
+          refresh: :workflow
+        ),
+        Builder.resource(SduiDemo.UI.Resources.PostUI,
+          id: "demo-live-hybrid-post",
+          region: :sidebar,
+          order: 1,
+          subject_id: "first"
+        ),
+        Builder.node("AshSDUI.IntentBar@v1",
+          id: "demo-live-hybrid-intents",
+          region: :main,
+          order: 0,
+          static_props: %{
+            ui: SduiDemo.UI.Resources.PostUI,
+            intents: intents,
+            class: "justify-start"
+          }
+        ),
+        Builder.node("AshSDUI.MetricGrid@v1",
+          id: "demo-live-hybrid-metrics",
+          region: :main,
+          order: 1,
+          binding: :metrics,
+          refresh: :manual
+        ),
+        Builder.node("AshSDUI.StreamList@v1",
+          id: "demo-live-hybrid-feed",
+          region: :main,
+          order: 2,
+          binding: :feed,
+          refresh: :subscription,
+          static_props: %{
+            title: "Live binding collection",
+            empty_title: "No feed items"
+          }
+        ),
+        Builder.node("AshSDUI.ActivityFeed@v1",
+          id: "demo-live-hybrid-activity",
+          region: :main,
+          order: 3,
+          binding: :activity,
+          refresh: :manual,
+          static_props: %{
+            empty_title: "No runtime activity"
+          }
+        )
+      ]
+    )
   end
 
   defp raw_root do

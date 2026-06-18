@@ -29,6 +29,10 @@ defmodule AshSDUI.Renderer do
       :subject_id,
       :region,
       :order,
+      :refresh,
+      :binding,
+      :variant,
+      :state_key,
       :children
     ]
   end
@@ -89,6 +93,8 @@ defmodule AshSDUI.Renderer do
   end
 
   defp build_from_records(node, all_records) do
+    {static_props, runtime_meta} = split_runtime_meta(node.static_props || %{})
+
     children =
       all_records
       |> Enum.filter(&(Map.get(&1, :parent_id) == node.id))
@@ -98,11 +104,15 @@ defmodule AshSDUI.Renderer do
     %TreeNode{
       id: node.id,
       component_name: node.component_name,
-      static_props: node.static_props,
+      static_props: static_props,
       subject_resource: node.subject_resource,
       subject_id: node.subject_id,
       region: node.region,
       order: node.order,
+      refresh: Map.get(runtime_meta, :refresh),
+      binding: Map.get(runtime_meta, :binding),
+      variant: Map.get(runtime_meta, :variant),
+      state_key: Map.get(runtime_meta, :state_key),
       children: children
     }
   end
@@ -123,6 +133,10 @@ defmodule AshSDUI.Renderer do
       subject_id: node.subject_id,
       region: node.region,
       order: node.order,
+      refresh: node.refresh,
+      binding: node.binding,
+      variant: node.variant,
+      state_key: node.state_key,
       children: children
     }
   end
@@ -146,5 +160,34 @@ defmodule AshSDUI.Renderer do
       Keyword.get(opts, :status, :published) == :published and
       Keyword.get(opts, :node_resource, AshSDUI.UINode) == AshSDUI.UINode and
       not Keyword.has_key?(opts, :resource)
+  end
+
+  @runtime_meta_key "__ash_sdui__"
+
+  defp split_runtime_meta(static_props) do
+    runtime_meta =
+      Map.get(static_props, @runtime_meta_key) ||
+        Map.get(static_props, String.to_atom(@runtime_meta_key)) ||
+        %{}
+
+    {
+      Map.drop(static_props, [@runtime_meta_key, String.to_atom(@runtime_meta_key)]),
+      normalize_runtime_meta(runtime_meta)
+    }
+  end
+
+  defp normalize_runtime_meta(runtime_meta) when is_map(runtime_meta) do
+    %{
+      refresh: read_meta(runtime_meta, :refresh),
+      binding: read_meta(runtime_meta, :binding),
+      variant: read_meta(runtime_meta, :variant),
+      state_key: read_meta(runtime_meta, :state_key)
+    }
+  end
+
+  defp normalize_runtime_meta(_runtime_meta), do: %{}
+
+  defp read_meta(meta, key) do
+    Map.get(meta, key) || Map.get(meta, Atom.to_string(key))
   end
 end

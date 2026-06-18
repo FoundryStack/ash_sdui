@@ -19,7 +19,9 @@ defmodule SduiDemoWeb.StorybookTest do
     assert "/components/post_publish_hint_field" in paths
     assert "/components/resource_actions" in paths
     assert "/components/resource_form" in paths
+    assert "/components/stream_list" in paths
     assert "/components/user_card" in paths
+    assert "/layouts/live_hybrid_layout" in paths
     assert "/layouts/raw_tree_showcase" in paths
     assert "/layouts/persisted_layout_showcase" in paths
   end

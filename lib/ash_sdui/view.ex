@@ -59,6 +59,9 @@ defmodule AshSDUI.View do
       :query,
       params: %{},
       selected: [],
+      loading: %{},
+      refresh: %{},
+      workflow: %{},
       assigns: %{}
     ]
 
@@ -66,6 +69,9 @@ defmodule AshSDUI.View do
             query: Query.t() | nil,
             params: map,
             selected: [term],
+            loading: map,
+            refresh: map,
+            workflow: map,
             assigns: map
           }
   end
@@ -84,7 +90,9 @@ defmodule AshSDUI.View do
     queries: [],
     state: nil,
     relationships: [],
-    assigns: %{}
+    assigns: %{},
+    refresh: nil,
+    workflow: nil
   ]
 
   @type mode :: :index | :show | :new | :edit | atom
@@ -102,7 +110,9 @@ defmodule AshSDUI.View do
           queries: [Query.t()],
           state: State.t() | nil,
           relationships: [term],
-          assigns: map
+          assigns: map,
+          refresh: term,
+          workflow: term
         }
 
   @doc """
@@ -131,7 +141,7 @@ defmodule AshSDUI.View do
 
     query_schema = resolve_query_schema(ui, view_meta, opts)
     query = Query.from_params(params, query_schema)
-    bindings = bindings(ui, resource, mode, query)
+    bindings = bindings(ui, resource, mode, query, context)
 
     view = %__MODULE__{
       resource: resource,
@@ -151,9 +161,16 @@ defmodule AshSDUI.View do
         |> apply_overrides(intent_overrides),
       bindings: bindings,
       queries: Enum.reject([query], &is_nil/1),
-      state: %State{query: query, params: params},
+      state: %State{
+        query: query,
+        params: params,
+        refresh: normalize_refresh(view_meta),
+        workflow: normalize_workflow(view_meta)
+      },
       relationships: Ash.Resource.Info.relationships(resource),
-      assigns: view_assigns(view_meta, recipe_overrides, Keyword.get(opts, :assigns, %{}), query)
+      assigns: view_assigns(view_meta, recipe_overrides, Keyword.get(opts, :assigns, %{}), query),
+      refresh: normalize_refresh(view_meta),
+      workflow: normalize_workflow(view_meta)
     }
 
     apply_variant_resolvers(view, Keyword.get(opts, :variant_resolvers, []))
@@ -254,43 +271,64 @@ defmodule AshSDUI.View do
     |> Enum.map(&Intent.resolve(&1, ui))
   end
 
-  defp bindings(ui, resource, mode, query) do
+  defp bindings(ui, resource, mode, query, context) do
     case Info.ui_bindings(ui) do
       [] ->
-        [default_binding(resource, mode, query)]
+        [default_binding(resource, mode, query, context)]
 
       bindings ->
         Enum.map(bindings, fn binding ->
-          Binding.resolve(%{
-            name: binding.name,
-            source: binding.source,
-            many?: binding.many?,
-            query:
-              if(binding.query && binding.query == query_name(query),
-                do: query,
-                else: binding.query
-              ),
-            default: binding.default
-          })
+          Binding.resolve(
+            %{
+              name: binding.name,
+              source: binding.source,
+              many?: binding.many?,
+              query:
+                if(binding.query && binding.query == query_name(query),
+                  do: query,
+                  else: binding.query
+                ),
+              default: binding.default,
+              refresh: Map.get(binding, :refresh),
+              update: Map.get(binding, :update)
+            },
+            context
+          )
         end)
     end
   end
 
-  defp default_binding(resource, :index, query) do
-    Binding.resolve(%{
-      name: :collection,
-      source: {:resource, resource},
-      many?: true,
-      query: query
-    })
+  defp normalize_refresh(nil), do: %{}
+  defp normalize_refresh(%{refresh: nil}), do: %{}
+  defp normalize_refresh(%{refresh: refresh}) when is_map(refresh), do: refresh
+  defp normalize_refresh(%{refresh: refresh}), do: %{mode: refresh}
+
+  defp normalize_workflow(nil), do: %{}
+  defp normalize_workflow(%{workflow: nil}), do: %{}
+  defp normalize_workflow(%{workflow: workflow}) when is_map(workflow), do: workflow
+  defp normalize_workflow(%{workflow: workflow}), do: %{state: workflow}
+
+  defp default_binding(resource, :index, query, context) do
+    Binding.resolve(
+      %{
+        name: :collection,
+        source: {:resource, resource},
+        many?: true,
+        query: query
+      },
+      context
+    )
   end
 
-  defp default_binding(resource, mode, query) when mode in [:show, :edit] do
-    Binding.resolve(%{name: :record, source: {:resource, resource}, many?: false, query: query})
+  defp default_binding(resource, mode, query, context) when mode in [:show, :edit] do
+    Binding.resolve(
+      %{name: :record, source: {:resource, resource}, many?: false, query: query},
+      context
+    )
   end
 
-  defp default_binding(resource, _mode, _query) do
-    Binding.resolve(%{name: :record, source: {:resource, resource}, many?: false})
+  defp default_binding(resource, _mode, _query, context) do
+    Binding.resolve(%{name: :record, source: {:resource, resource}, many?: false}, context)
   end
 
   defp apply_variant_resolvers(view, []), do: {:ok, view}

@@ -17,6 +17,9 @@ Built-in components, custom recipes, `layout: :sdui`, and storybook demos all
 share that same shape now, so custom UI can plug in without separate adapter
 layers.
 
+See [docs/runtime_model.md](/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/runtime_model.md)
+for the detailed lifecycle and node-scoped runtime contract.
+
 ## The ladder
 
 Prefer these layers in order:
@@ -73,6 +76,59 @@ Use this when:
 - the built-in form/detail/collection rendering is close, but not enough
 - a custom recipe can express the page shape cleanly
 
+## Runtime state available to generated views
+
+Generated screens now share more than fields and actions.
+
+`state` can carry:
+
+- query state
+- selected IDs
+- loading flags
+- refresh metadata
+- workflow state
+- extra runtime assigns
+
+That means a generated view can gradually become more interactive without
+needing a brand-new screen architecture.
+
+## Binding authoring
+
+Use `ui_binding` when a screen needs named data sources beyond the stock
+collection/detail assumptions.
+
+Current source families include:
+
+- `{:resource, resource}`
+- `{:relationship, relationship}`
+- `{:assign, key}`
+- `{:context, key}`
+- `{:runtime, key}`
+- `{:selection}`
+- `{:subject}`
+- `{:poll, source, interval: ms}`
+- `{:pubsub, topic, ...}`
+- `{:stream, source, ...}`
+
+Current refresh modes include:
+
+- `:manual`
+- `:params`
+- `:subscription`
+- `{:interval, ms}`
+
+Current update strategies include:
+
+- `:replace`
+- `:append`
+- `:prepend`
+- `:merge`
+- `:remove`
+
+Generated views do not need to use all of that at once. The point is that the
+metadata path now has room for live collections and refreshable runtime panels,
+not only static CRUD.
+
 ## What belongs in `recipe_overrides`
 
 Use `recipe_overrides` for presentational decisions that should stay easy to
@@ -87,6 +143,31 @@ author and easy to diff:
 Keep business behavior out of `recipe_overrides`. If a view needs custom data
 loading, event flow, or deeply custom component coordination, step up to a
 custom recipe or a custom LiveView.
+
+## Intent authoring
+
+`ui_intent` is now broader than button labels and placements.
+
+Supported target families include:
+
+- `{:navigate, path}`
+- `{:patch, path}`
+- `{:event, event}`
+- `{:ash_action, action}`
+- `{:refresh, binding_or_view}`
+- `{:select, operation}`
+- `{:workflow, event}`
+- `{:custom, module, function}`
+
+Supported behavioral metadata includes:
+
+- `visible_when`
+- `enabled_when`
+- `loading_when`
+- `refreshes`
+
+`loading_when` should currently be treated as declarative render metadata, not
+as a promise of fully automatic async lifecycle management.
 
 ## Storybook for generated views
 

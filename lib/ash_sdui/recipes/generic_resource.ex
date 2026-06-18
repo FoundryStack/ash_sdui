@@ -137,7 +137,10 @@ defmodule AshSDUI.Recipes.GenericResource do
       confirm: intent.confirm,
       placement: intent.placement,
       requires_actor?: intent.requires_actor?,
-      visible_when: intent.visible_when
+      visible_when: intent.visible_when,
+      enabled_when: intent.enabled_when,
+      loading_when: intent.loading_when,
+      refreshes: intent.refreshes
     }
   end
 

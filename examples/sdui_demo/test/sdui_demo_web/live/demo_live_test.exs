@@ -20,6 +20,7 @@ defmodule SduiDemoWeb.Live.DemoLiveTest do
       assert html =~ "Recipe customization"
       assert html =~ "Layout API tour"
       assert html =~ "Storybook parity"
+      assert html =~ "Live runtime state"
     end
 
     test "renders navigation links to showcase routes", %{conn: conn} do
@@ -27,6 +28,7 @@ defmodule SduiDemoWeb.Live.DemoLiveTest do
 
       assert html =~ "/posts"
       assert html =~ "/posts/generated"
+      assert html =~ "/live/hybrid"
       assert html =~ "/layouts/manage"
       assert html =~ "Open the blog"
       assert html =~ "Open generated index"
@@ -48,6 +50,7 @@ defmodule SduiDemoWeb.Live.DemoLiveTest do
       assert html =~ "Generated Views"
       assert html =~ "Custom Recipe"
       assert html =~ "Ephemeral Layouts"
+      assert html =~ "Live Runtime"
       assert html =~ "Layout API"
     end
   end

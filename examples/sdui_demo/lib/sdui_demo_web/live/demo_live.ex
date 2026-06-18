@@ -31,6 +31,18 @@ defmodule SduiDemoWeb.Live.DemoLive do
       title: "Storybook parity",
       desc:
         "Generated view stories, layout stories, and app-side components all share the same visual path as the demo routes."
+    },
+    %{
+      icon: "Refresh",
+      title: "Live runtime state",
+      desc:
+        "Refresh, selection, workflow, and node-level layout metadata are now explicit runtime concepts with generic components and event surfaces."
+    },
+    %{
+      icon: "Stream",
+      title: "Live collection bindings",
+      desc:
+        "Poll, PubSub, and stream-style bindings can update collections in place with append, merge, and remove strategies."
     }
   ]
 
@@ -67,6 +79,18 @@ defmodule SduiDemoWeb.Live.DemoLive do
       api: "`AshSDUI.LiveScreen.assign_layout/3`",
       desc:
         "Per-record runtime layouts are rebuilt on the fly, then rendered through `SDUIRoot` with no persisted layout dependency."
+    },
+    %{
+      tag: "Live Runtime",
+      title: "Feed, metrics, selection, workflow, and hybrid layouts",
+      path: "/live/feed",
+      secondary_path: "/live/hybrid",
+      cta: "Open live feed route",
+      secondary_cta: "Open the hybrid layout route",
+      api:
+        "`AshSDUI.Binding`, `AshSDUI.Intent`, `AshSDUI.View.State`, `AshSDUI.LiveScreen.assign_layout/3`, live-aware components",
+      desc:
+        "The live runtime tour demonstrates collection subscriptions, refresh commands, selection-aware intents, workflow state, node-scoped layout metadata, and generic dashboard/feed primitives."
     },
     %{
       tag: "Layout API",

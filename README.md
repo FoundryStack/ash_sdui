@@ -16,6 +16,12 @@ Server-Driven UI for Phoenix LiveView applications backed by [Ash](https://hexdo
 - Define UI layouts as composable trees of typed components
 - Persist and edit layouts at runtime via the unified `AshSDUI.Layout` API
 - Code-based layouts for static or config-driven views
+- Ash-first generated views through `AshSDUI.View` and `AshSDUI.LiveResource`
+- Explicit runtime contract shared by generated views and SDUI layouts:
+  `view`, `bindings`, `state`, and `context`
+- Live collection bindings with poll, PubSub, and stream-style sources
+- Generic runtime-aware components for lists, metrics, status, activity, and
+  selection
 - Registry-based component discovery with automatic scanning
 - ETS-backed cache with automatic invalidation when `UINode` records change
 - GraphQL fragment metadata on components for schema-driven tooling
@@ -37,6 +43,23 @@ prototypes. Production applications that need database-backed layouts should
 define a compatible Ash resource and pass it as `node_resource: MyApp.SDUI.Node`.
 
 ## Core Concepts
+
+### Current Status
+
+AshSDUI started as a layout engine and generated-view helper. It now ships a
+broader runtime model for Ash-backed LiveView screens.
+
+The current public center of gravity is:
+
+- `AshSDUI.View` for resolved screen metadata
+- `AshSDUI.Binding` for named runtime data sources
+- `AshSDUI.Intent` for normalized user actions
+- `AshSDUI.LiveResource` for generated and semi-generated runtime hosting
+- `AshSDUI.Components.SDUIRoot` for layout-rendered components that consume the
+  same runtime contract
+
+The older bootstrap plan and unified-component-graph exploration are still
+useful background, but the current runtime contract is the source of truth.
 
 ### Components
 
@@ -204,11 +227,14 @@ Built-in generated components now share one runtime contract:
 
 - `view` for the resolved `AshSDUI.View`
 - `bindings` for named loaded data sources
-- `state` for query and selection state
+- `state` for query, selection, refresh, loading, and workflow state
 - `context` for actor, tenant, locale, and audience
 
 That same contract is passed through `layout: :sdui` recipe trees, so generated
 views and custom SDUI recipes can compose against the same surface.
+
+For the detailed runtime lifecycle, see
+[docs/runtime_model.md](/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/runtime_model.md).
 
 ### Storybook and Demo UI
 
@@ -252,6 +278,8 @@ The guides below keep those flows separate on purpose:
 
 - [docs/authoring_generated_screens.md](/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/authoring_generated_screens.md)
 - [docs/persisted_sdui_layouts.md](/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/persisted_sdui_layouts.md)
+- [docs/runtime_model.md](/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/runtime_model.md)
+- [docs/spec.md](/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/spec.md)
 
 ## UINode Resource
 
@@ -403,6 +431,68 @@ arbitrary `assigns`. Authorization-aware filtering can be added as one resolver;
 audience, device, locale, or product-specific variants can be added as others.
 That makes roles and groups app vocabulary instead of AshSDUI core concepts.
 
+### Runtime bindings
+
+`ui_binding` gives a view explicit named data sources.
+
+Current source families include:
+
+- `{:resource, resource}`
+- `{:relationship, relationship}`
+- `{:assign, key}`
+- `{:context, key}`
+- `{:runtime, key}`
+- `{:selection}`
+- `{:subject}`
+- `{:event, key}`
+- `{:poll, source, interval: ms}`
+- `{:pubsub, topic, ...}`
+- `{:stream, source, ...}`
+
+Current refresh modes include:
+
+- `:manual`
+- `:params`
+- `:subscription`
+- `{:interval, ms}`
+
+Current update strategies include:
+
+- `:replace`
+- `:append`
+- `:prepend`
+- `:merge`
+- `:remove`
+
+Phoenix PubSub is the first live transport used by the package, but the public
+contract stays binding-source based rather than PubSub-specific.
+
+### Runtime intents
+
+`ui_intent` has grown beyond static toolbar buttons.
+
+Current target families include:
+
+- `{:navigate, path}`
+- `{:patch, path}`
+- `{:event, event}`
+- `{:ash_action, action}`
+- `{:refresh, binding_or_view}`
+- `{:select, operation}`
+- `{:workflow, event}`
+- `{:custom, module, function}`
+
+Current behavioral metadata includes:
+
+- `visible_when`
+- `enabled_when`
+- `loading_when`
+- `refreshes`
+
+`AshSDUI.Intent.command/3` is the canonical normalized command envelope. The
+compatibility `execute/3` wrapper still exists for direct execution-style
+consumers.
+
 ## Generated LiveResource Views
 
 For conventional generated views, `AshSDUI.LiveResource` owns the repeated
@@ -420,8 +510,35 @@ end
 The generated LiveView resolves the view, loads index/show data through Ash,
 builds `AshPhoenix.Form` values for new/edit views, handles `"validate"`,
 `"save"`, and `"delete"` events, and renders the package DaisyUI components.
-Override `mount/3`, `handle_event/3`, or `render/1` in the module when an app
-needs deeper behavior.
+It also hosts refresh, selection, workflow, and subscription-aware binding
+behavior for the runtime slices demonstrated in the demo app. Override
+`mount/3`, `handle_event/3`, or `render/1` in the module when an app needs
+deeper behavior.
+
+### What is still intentionally partial
+
+AshSDUI's runtime is already broader than "CRUD scaffolding," but a few areas
+are still intentionally modest:
+
+- query extensions beyond current search/filter/sort/offset pagination
+- full automatic async intent lifecycle management
+- a dedicated `ui_selection` DSL
+- a dedicated `ui_workflow` DSL
+- fine-grained node-level rendering guarantees
+
+Those are future extensions to the current runtime, not signs that the current
+contract is temporary.
+
+## Demo and Proof
+
+`examples/sdui_demo` is the public API tour for the package. Its coverage matrix
+maps every promoted feature to:
+
+- a canonical route
+- a Storybook surface when visual isolation helps
+- at least one regression test
+
+See [examples/sdui_demo/README.md](/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/examples/sdui_demo/README.md).
 
 ### Built-in DaisyUI components
 

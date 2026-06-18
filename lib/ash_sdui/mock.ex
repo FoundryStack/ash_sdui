@@ -41,6 +41,10 @@ defmodule AshSDUI.Mock do
       subject_id: Keyword.get(opts, :subject_id),
       region: Keyword.get(opts, :region, :default),
       order: Keyword.get(opts, :order, 0),
+      refresh: Keyword.get(opts, :refresh),
+      binding: Keyword.get(opts, :binding),
+      variant: Keyword.get(opts, :variant),
+      state_key: Keyword.get(opts, :state_key),
       children: Keyword.get(opts, :children, [])
     }
   end

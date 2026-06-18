@@ -2,6 +2,7 @@ defmodule AshSDUI.ViewTest do
   use ExUnit.Case, async: false
 
   alias AshSDUI.Intent
+  alias AshSDUI.Binding
   alias AshSDUI.Layout
   alias AshSDUI.Query
   alias AshSDUI.Resource.Info
@@ -69,5 +70,98 @@ defmodule AshSDUI.ViewTest do
              |> Intent.execute(%{title: "Updated"}, resource: ScreenArticle)
 
     assert runtime.resource == ScreenArticle
+  end
+
+  test "intent command returns normalized envelopes for generic runtime targets" do
+    intent =
+      Intent.resolve(%{
+        name: :refresh_metrics,
+        label: "Refresh",
+        target: {:refresh, :metrics},
+        refreshes: [:metrics]
+      })
+
+    assert {:ok, command} = Intent.command(intent, %{id: "metric-1"}, %{resource: ScreenArticle})
+    assert command.type == :refresh
+    assert command.intent == :refresh_metrics
+    assert command.payload == %{id: "metric-1"}
+    assert command.meta.binding == :metrics
+    assert command.meta.refreshes == [:metrics]
+  end
+
+  test "binding resolve infers runtime metadata for generic source families" do
+    binding =
+      Binding.resolve(
+        %{name: :audience, source: {:context, :audience}, refresh: :params, update: :merge},
+        %{audience: :staff}
+      )
+
+    assert binding.value == :staff
+    assert binding.refresh == :params
+    assert binding.update == :merge
+    assert binding.source_kind == :context
+    assert binding.status == :ready
+  end
+
+  test "binding resolve normalizes live collection sources" do
+    binding =
+      Binding.resolve(%{
+        name: :feed,
+        source:
+          {:pubsub, "ash_sdui:feed",
+           [source: {:assign, :seed_feed}, event: :feed_update, reducer: :stream_event, key: :id]},
+        many?: true,
+        update: :merge
+      })
+
+    assert binding.refresh == :subscription
+    assert binding.update_strategy == :merge
+    assert binding.source_kind == :pubsub
+    assert binding.subscription.topic == "ash_sdui:feed"
+    assert binding.subscription.event == :feed_update
+    assert binding.subscription.key == :id
+  end
+
+  test "binding applies append merge and remove strategies for live collections" do
+    binding =
+      Binding.resolve(%{
+        name: :feed,
+        source:
+          {:stream, {:assign, :seed_feed},
+           [event: :feed_update, reducer: :stream_event, key: :id]},
+        many?: true,
+        update: :append
+      })
+
+    current = [%{id: "1", title: "First"}]
+
+    assert {:ok, appended, _meta} =
+             Binding.apply_update(
+               binding,
+               current,
+               {:ash_sdui_event, :feed_update,
+                %{operation: :append, item: %{id: "2", title: "Second"}}}
+             )
+
+    assert Enum.map(appended, & &1.id) == ["1", "2"]
+
+    assert {:ok, merged, _meta} =
+             Binding.apply_update(
+               %{binding | update: :merge, update_strategy: :merge},
+               appended,
+               {:ash_sdui_event, :feed_update,
+                %{operation: :merge, item: %{id: "1", title: "Updated"}}}
+             )
+
+    assert Enum.find(merged, &(&1.id == "1")).title == "Updated"
+
+    assert {:ok, removed, _meta} =
+             Binding.apply_update(
+               %{binding | update: :remove, update_strategy: :remove},
+               merged,
+               {:ash_sdui_event, :feed_update, %{operation: :remove, id: "2"}}
+             )
+
+    assert Enum.map(removed, & &1.id) == ["1"]
   end
 end

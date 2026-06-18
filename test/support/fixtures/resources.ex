@@ -199,6 +199,25 @@ defmodule AshSDUI.TestFixtures.LiveResourcePostUI do
   end
 end
 
+defmodule AshSDUI.TestFixtures.LiveCollectionPostUI do
+  use AshSDUI.Resource.Standalone
+
+  sdui do
+    for_resource(AshSDUI.TestFixtures.LiveResourcePost)
+    view(:index, recipe: :collection, read_action: :read, layout: :sdui, title: "Live Feed")
+
+    ui_binding(:collection,
+      source:
+        {:pubsub, "ash_sdui:test_feed",
+         [source: {:assign, :seed_feed}, event: :feed_update, reducer: :stream_event, key: :id]},
+      many?: true,
+      default: [],
+      refresh: :subscription,
+      update: :append
+    )
+  end
+end
+
 defmodule AshSDUI.TestFixtures.TestLayoutResource do
   use Ash.Resource, domain: nil, extensions: [AshSDUI.Resource]
 
@@ -483,7 +502,13 @@ defmodule AshSDUI.TestFixtures.ViewArticleUI do
     for_resource(AshSDUI.TestFixtures.ScreenArticle)
     default_component("Article.Card@v1")
 
-    view(:index, recipe: :collection, read_action: :read, title: "Knowledge Base", query: :default)
+    view(:index,
+      recipe: :collection,
+      read_action: :read,
+      title: "Knowledge Base",
+      query: :default
+    )
+
     view(:show, recipe: :detail, read_action: :read)
     view(:new, recipe: :form, action: :create)
 

@@ -63,3 +63,40 @@ Prefer the small public API:
 4. `AshSDUI.Layout.publish/2`
 
 Prefer those functions over `AshSDUI.Layout.Persistence`.
+
+## Runtime-aware node metadata
+
+Layouts can now carry a small set of declarative runtime hooks per node:
+
+- `binding`
+- `refresh`
+- `variant`
+- `state_key`
+
+Use those when a component should receive a focused slice of the runtime
+contract rather than the whole screen context.
+
+Examples:
+
+- `binding: :feed` to inject a collection as `@bound_value`
+- `state_key: :workflow` to inject workflow state as `@state_slice`
+- `variant: :compact` to keep recipe logic and component presentation separate
+
+## What persists and what does not
+
+Persisted layout nodes store declarative runtime metadata only.
+
+The current implementation encodes node runtime metadata inside `static_props`
+under an internal `__ash_sdui__` envelope so it can round-trip through
+`AshSDUI.UINode` records.
+
+Persisted layouts do not store:
+
+- in-memory refresh state
+- subscription registrations
+- loaded binding values
+- workflow progress
+- selection state
+
+Those remain part of the live runtime, not part of the stored layout
+definition.

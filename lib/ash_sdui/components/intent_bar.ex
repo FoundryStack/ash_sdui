@@ -49,7 +49,13 @@ defmodule AshSDUI.Components.IntentBar do
     ~H"""
     <div class={["flex flex-wrap justify-end gap-2", @class]} data-testid="intent-bar">
       <%= for intent <- @intents do %>
-        <.intent intent={intent} subject={@subject} override={Map.get(@overrides, intent.name, %{})} />
+        <.intent
+          intent={intent}
+          subject={@subject}
+          state={@state}
+          bindings={@bindings}
+          override={Map.get(@overrides, intent.name, %{})}
+        />
       <% end %>
     </div>
     """
@@ -57,6 +63,8 @@ defmodule AshSDUI.Components.IntentBar do
 
   attr(:intent, :any, required: true)
   attr(:subject, :any, default: nil)
+  attr(:state, :any, default: nil)
+  attr(:bindings, :map, default: %{})
   attr(:override, :map, default: %{})
 
   def intent(assigns) do
@@ -68,11 +76,17 @@ defmodule AshSDUI.Components.IntentBar do
       assigns
       |> assign(:kind, target_kind(assigns.intent, assigns.override))
       |> assign(:label, label)
+      |> assign(:enabled?, enabled?(assigns.intent, assigns))
+      |> assign(:loading?, loading?(assigns.intent, assigns))
 
     ~H"""
     <%= case @kind do %>
       <% :link -> %>
-        <a href={target_to(@intent, @subject, @override)} class={button_class(Map.get(@intent, :style), @override[:class])}>
+        <a
+          href={target_to(@intent, @subject, @override)}
+          class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
+          aria-disabled={to_string(not @enabled?)}
+        >
           {@label}
         </a>
       <% :event -> %>
@@ -81,12 +95,29 @@ defmodule AshSDUI.Components.IntentBar do
           phx-click={target_event(@intent, @override)}
           phx-value-id={@override[:id] || (@subject && @subject.id)}
           data-confirm={target_confirm(@intent, @override)}
-          class={button_class(Map.get(@intent, :style), @override[:class])}
+          class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
+          disabled={!@enabled?}
         >
           {@label}
         </button>
       <% :submit -> %>
-        <button type="submit" class={button_class(Map.get(@intent, :style), @override[:class])}>
+        <button
+          type="submit"
+          class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
+          disabled={!@enabled?}
+        >
+          {@label}
+        </button>
+      <% :intent -> %>
+        <button
+          type="button"
+          phx-click="intent"
+          phx-value-intent={@intent.name}
+          phx-value-id={@override[:id] || (@subject && @subject.id)}
+          data-confirm={target_confirm(@intent, @override)}
+          class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
+          disabled={!@enabled?}
+        >
           {@label}
         </button>
       <% _ -> %>
@@ -121,7 +152,7 @@ defmodule AshSDUI.Components.IntentBar do
   defp replace_subject_id(to, nil), do: to
   defp replace_subject_id(to, subject), do: String.replace(to, ":id", to_string(subject.id))
 
-  defp button_class(style, class) do
+  defp button_class(style, class, loading?, enabled?) do
     [
       "btn btn-sm",
       case style do
@@ -131,6 +162,8 @@ defmodule AshSDUI.Components.IntentBar do
         :info -> "btn-info btn-outline"
         _ -> "btn-ghost"
       end,
+      loading? && "loading",
+      !enabled? && "btn-disabled opacity-60 pointer-events-none",
       class
     ]
   end
@@ -141,6 +174,10 @@ defmodule AshSDUI.Components.IntentBar do
       {:patch, _} -> :link
       {:event, _} -> :event
       {:ash_action, _} -> :submit
+      {:refresh, _} -> :intent
+      {:select, _} -> :intent
+      {:workflow, _} -> :intent
+      {:custom, _, _} -> :intent
       _ -> nil
     end
   end
@@ -152,4 +189,59 @@ defmodule AshSDUI.Components.IntentBar do
       _ -> true
     end
   end
+
+  defp enabled?(intent, %{bindings: bindings, state: state}) do
+    case Map.get(intent, :enabled_when) do
+      nil ->
+        true
+
+      {:selection, :any} ->
+        not Enum.empty?((state && state.selected) || [])
+
+      {:selection, :none} ->
+        Enum.empty?((state && state.selected) || [])
+
+      {:workflow, value} ->
+        get_in((state && Map.from_struct(state)) || %{}, [:workflow, :state]) == value
+
+      binding when is_atom(binding) ->
+        truthy?(Map.get(bindings, binding))
+
+      value when is_function(value, 2) ->
+        value.(bindings, state)
+
+      value when is_boolean(value) ->
+        value
+
+      _ ->
+        true
+    end
+  end
+
+  defp loading?(intent, %{state: state}) do
+    case Map.get(intent, :loading_when) do
+      nil ->
+        false
+
+      {:intent, name} ->
+        Map.get((state && state.loading) || %{}, name, false)
+
+      {:workflow, value} ->
+        get_in((state && Map.from_struct(state)) || %{}, [:workflow, :state]) == value
+
+      name when is_atom(name) ->
+        Map.get((state && state.loading) || %{}, name, false)
+
+      value when is_boolean(value) ->
+        value
+
+      _ ->
+        false
+    end
+  end
+
+  defp truthy?(nil), do: false
+  defp truthy?(false), do: false
+  defp truthy?(value) when is_list(value), do: value != []
+  defp truthy?(value), do: value != %{}
 end

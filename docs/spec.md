@@ -1,346 +1,382 @@
-# Unified Component Graph for SDUI
+# AshSDUI Runtime Specification
 
-**Date:** May 03, 2026  
-**Status:** Accepted  
-**Authors:** Architecture Team
+**Status:** Accepted and implemented in the current package surface  
+**Last updated:** June 17, 2026
 
-## 1. Context & Problem Statement
+## Purpose
 
-We require a Server-Driven UI (SDUI) architecture that offers maximum flexibility for real-time personalization, A/B testing, and AI-driven layout mutations. Previous architectural iterations explored hardcoded LiveViews and a distinction between "Layouts" and "Components." These approaches were found to be insufficient, creating either rigid code structures or artificial abstractions that resulted in developer boilerplate and limited dynamism. The ultimate goal is to represent the entire application UI as pure, mutable data, eliminating the need for code deployments to alter UI structure.
+This document is the current source of truth for `ash_sdui` public behavior.
 
-## 2. Decision
+Earlier architecture work explored a broader "unified component graph" model as
+the primary abstraction. The package that ships today is more concrete:
 
-We will adopt a **Unified Component Graph** architecture. This decision abolishes the distinction between "layouts" and "components." The entire UI is modeled as a graph of nodes, where every node is a component.
+- Ash-first UI metadata resolves into `AshSDUI.View`
+- `AshSDUI.LiveResource` hosts generated and semi-generated screens
+- layouts remain first-class and persistable
+- the runtime contract is explicit and reusable across generated views,
+  Storybook, and custom SDUI layouts
 
-This architecture is founded on the following principles:
+Treat older bootstrap plans and component-graph writeups as historical context.
+Use this spec when implementing or reviewing current features.
 
-1.  **A Single Abstraction (`UINode`):** The entire UI graph—from the root page down to a single button—is represented by a single, self-referencing Ash Resource named `UINode`.
-2.  **UI is a Data Graph:** A "page" is simply a root `UINode` in the database. Its content and structure are defined by its children nodes. This makes the application's structure queryable, auditable, and mutable via database transactions.
-3.  **Component-Owned Contracts:** Each frontend component is the single source of truth for its own data needs, which it declares via a versioned GraphQL fragment. The system infers data dependencies directly from these fragments.
-4.  **Generic Rendering Engine:** A single, generic Phoenix LiveView (`SDUIPageLive`) can render any UI graph by looking up the corresponding root `UINode` from the URL, eliminating all page-specific LiveView files.
-
-## 3. Consequences
-
-### Positive
+## History in Brief
 
-- **Total Flexibility:** An AI Agent or a human manager can fundamentally restructure any page for any user segment by simply manipulating `UINode` records in the database. Swapping a two-column layout for a three-column layout is a data change, not a code change.
-- **Zero Developer Boilerplate:** Developers no longer write page-specific LiveViews, `mount` functions for data fetching, or rendering loops. They focus solely on building reusable, self-contained components.
-- **Radical Reusability:** Any component can be placed anywhere in the UI graph. Its context is defined entirely by the data, not by hardcoded parent-child relationships in code.
-- **Simplified Tooling:** This data-centric model enables the creation of powerful internal tools, such as visual UI builders that directly manipulate the `UINode` database table.
+AshSDUI evolved in four broad steps:
 
-### Negative / Risks & Mitigations
+1. Layout engine and component registry
+2. Ash-aware generated views using `view`, `ui_field`, `ui_query`,
+   `ui_binding`, and `ui_intent`
+3. Runtime contract expansion around `view`, `bindings`, `state`, and
+   `context`
+4. Live runtime additions for refresh, subscriptions, streaming collection
+   updates, selection, workflow state, and hybrid layout metadata
 
-- **Database as a Potential Bottleneck:** Rendering a page now requires a recursive database query to fetch the entire component graph.
-  - **Mitigation:** We will rely on the underlying data layer's efficiency (e.g., `ash_postgres` with Recursive CTEs, or `ash_gel`'s native graph-fetching capabilities). Furthermore, the UI _structure_ can be aggressively cached (e.g., in ETS or Redis), as it changes far less frequently than the underlying business _data_.
-- **Initial Complexity for Trivial Pages:** The model may seem like overkill for a simple, static "About Us" page.
-  - **Mitigation:** The system is not exclusive. Teams can and should still use traditional, simple LiveViews for pages that are guaranteed to be static and do not require dynamic composition. The SDUI engine will be used for the dynamic, user-facing parts of the application.
+The current library keeps all of those layers, but the runtime contract is now
+the main public model.
 
----
+## Canonical Runtime Contract
 
-# Technical Specification: `AshSDUI`
+Every generated or runtime-composed screen should be understandable in terms of:
 
-## 1. The Core Resource: `UINode`
-
-This single resource models the entire UI graph.
-
-```elixir
-# lib/my_app/ui/ui_node.ex
-defmodule MyApp.UI.UINode do
-  use Ash.Resource, data_layer: MyApp.DataLayer # e.g., AshGel.DataLayer
+- `view`
+- `bindings`
+- `state`
+- `context`
 
-  attributes do
-    uuid_primary_key :id
+When a view is rendered through an SDUI layout tree, nodes may also declare:
 
-    # WHAT to render: The globally unique, versioned component identifier.
-    attribute :component_name, :string, allow_nil?: false, constraints: [
-      format: ~r/^[A-Za-z0-9\.]+@v\d+$/,
-      message: "must be in the format 'Component.Name@v1'"
-    ]
+- `binding`
+- `refresh`
+- `variant`
+- `state_key`
 
-    # HOW to configure: Static properties passed to the component.
-    attribute :static_props, :map, default: %{}
+`AshSDUI.Components.SDUIRoot` is the bridge between those runtime values and
+rendered components.
 
-    # WHAT data to show: The abstract pointer to an Ash Resource.
-    attribute :subject_resource, :string
-    attribute :subject_id, :uuid
+## View Contract
 
-    # WHERE it lives in the graph: The tree structure.
-    # Defines which slot/region of the parent this node renders into.
-    attribute :region, :atom, default: :default
-    # Defines the render order for multiple children in the same region.
-    attribute :order, :integer, default: 0
-  end
+`AshSDUI.View` is the package's normalized, inspectable UI model.
 
-  relationships do
-    # A self-referencing relationship builds the entire tree/graph.
-    belongs_to :parent, __MODULE__
-    has_many :children, __MODULE__, destination_attribute: :parent_id
-  end
+Its major fields are:
 
-  # Dynamically resolves the subject_resource and subject_id into a hydrated Ash record.
-  calculations do
-    calculate :subject, :struct, MyApp.UI.Calculations.ResolveSubject
-  end
-end
-```
+- `resource`
+- `ui`
+- `name`
+- `mode`
+- `action`
+- `recipe`
+- `context`
+- `fields`
+- `intents`
+- `bindings`
+- `queries`
+- `state`
+- `relationships`
+- `assigns`
+- `refresh`
+- `workflow`
 
-## 2. The Component Contract: `use AshSDUI.Component`
+`AshSDUI.View.resolve/3` is the primary entry point for generated UIs. It
+combines resource metadata, runtime params, query state, bindings, and variant
+resolvers into one struct that recipes and LiveViews can consume.
 
-Developers build self-contained components. A macro provides the developer-friendly interface and handles the underlying registration and parsing.
+## State Contract
 
-```elixir
-# lib/my_app_web/components/user_profile/header.ex
-defmodule MyAppWeb.Components.UserProfile.Header do
-  # 1. The developer uses the macro and provides ONLY the GraphQL fragment.
-  # The system parses this at compile time to infer that this component
-  # is compatible with the `User` resource.
-  use AshSDUI.Component, fragment: """
-    fragment UserProfileHeaderData on User {
-      username
-      avatarUrl
-    }
-  """
+`AshSDUI.View.State` is the authoritative runtime state shape. It currently
+includes:
 
-  # 2. The render function receives the hydrated data and can render its children
-  # into named slots/regions using Phoenix's built-in `render_slot`.
-  def render(assigns) do
-    ~H"""
-    <div class="profile-header">
-      <img src={@runtime_data.avatarUrl} />
-      <span><%= @runtime_data.username %></span>
+- `query`
+- `params`
+- `selected`
+- `loading`
+- `refresh`
+- `workflow`
+- `assigns`
 
-      <%# Renders any child nodes assigned to the :actions region %>
-      <div class="actions-toolbar">
-        <%= render_slot(@inner_block, :actions) %>
-      </div>
-    </div>
-    """
-  end
-end
-```
+### Meaning of each field
 
-## 3. The Generic Rendering Engine
+- `query`: normalized query state for collection-oriented views
+- `params`: original or normalized request/event params
+- `selected`: canonical list of selected identifiers
+- `loading`: runtime loading flags keyed by feature or intent name
+- `refresh`: per-binding or per-view refresh metadata
+- `workflow`: generic workflow state for view-local transitions
+- `assigns`: extra runtime state that does not fit the shared contract
 
-### 3.1. The Generic LiveView (`SDUIPageLive`)
+## Binding Contract
 
-This single LiveView replaces all page-specific LiveViews. It is provided by the `AshSDUI` library.
+`ui_binding` defines named data sources for a view. `AshSDUI.Binding` resolves
+those declarations into runtime bindings with normalized metadata.
 
-```elixir
-# lib/my_app_web/live/sdui_page_live.ex
-defmodule MyAppWeb.Live.SDUIPageLive do
-  use MyAppWeb, :live_view
+### Supported source families
 
-  # The `use` macro injects all necessary logic.
-  # `:from_params` tells it to use the :name from the URL to find the root UINode.
-  use AshSDUI, lookup: {:from_params, :name}
+Author-facing source shapes currently supported:
 
-  # The render function simply delegates to the AshSDUI rendering component.
-  def render(assigns) do
-    ~H"""
-    <.sdui_root />
-    """
-  end
-end
-```
+- `{:resource, resource}`
+- `{:relationship, relationship}`
+- `{:assign, key}`
+- `{:context, key}`
+- `{:runtime, key}`
+- `{:selection}`
+- `{:subject}`
+- `{:event, key}`
+- `{:poll, source, interval: ms}`
+- `{:pubsub, topic, ...}`
+- `{:stream, source, ...}`
 
-### 3.2. Routing
+Context aliases are also supported:
 
-The router has a single, generic entry point for all SDUI-rendered pages.
+- `{:actor}`
+- `{:tenant}`
 
-```elixir
-# lib/my_app_web/router.ex
-live "/p/:name", SDUIPageLive, :show
-```
+### Binding runtime metadata
 
-Navigating to `/p/player-dashboard` will cause the system to look for a root `UINode` where `component_name` starts with `"Pages.PlayerDashboard"`.
+Runtime-resolved binding structs include:
 
-## 4. Public Interfaces
+- `refresh`
+- `update`
+- `update_strategy`
+- `source_kind`
+- `status`
+- `subscription`
 
-### 4.1. GraphQL (for headless clients)
+Those are runtime fields, not extra author-facing DSL concepts.
 
-The system exposes a query to fetch any UI graph, allowing native mobile clients to use the same SDUI engine.
+### Supported refresh semantics
 
-- **Query:** `getUINode(name: String!): UINode`
-- **Types:** `ash_graphql` automatically generates a `UINode` type and a polymorphic `SDUISubject` Union type for the `subject` field based on which resources have opted-in.
+Current normalized refresh modes:
 
-### 4.2. Actions (for interactivity)
+- `:manual`
+- `:params`
+- `:subscription`
+- `{:interval, ms}`
 
-Write operations are handled by standard Ash Actions, triggered from components via `phx-click`.
+### Supported update semantics
 
-```elixir
-# Inside a component...
-def handle_event("cashout", %{"bet_id" => bet_id}, socket) do
-  case MyApp.Gamble.cashout_bet(bet_id, actor: socket.assigns.current_user) do
-    {:ok, _} -> # Notify success
-    {:error, _} -> # Notify error
-  end
-  {:noreply, socket}
-end
-```
+Current normalized update strategies:
 
-The `UINode` for this component in the database would contain `action_bindings` to map a UI event to this `phx-click` event and provide the necessary payload (e.g., `%{bet_id: "$subject.id"}`).
+- `:replace`
+- `:append`
+- `:prepend`
+- `:merge`
+- `:remove`
 
----
+Bindings can be planned with `AshSDUI.Binding.plan/2`, loaded with
+`AshSDUI.Binding.load/2`, subscribed through
+`AshSDUI.Binding.subscription_specs/2`, and updated with
+`AshSDUI.Binding.apply_update/3`.
 
-# Production System Specification: `AshSDUI`
+### Subscription transport
 
-This document extends the core ADR with specifications for the ancillary systems required for a robust, developer-friendly, and performant production environment.
+Phoenix PubSub is the first concrete live transport used by the package, but
+the public binding model stays source-based rather than transport-specific.
 
-## 1. Core Rendering: Dual-Mode Engine (Code & Database)
+The spec does not require PubSub to remain the only transport. Future
+subscription adapters should fit into the same binding contract without forcing
+DSL redesign.
 
-The system MUST support rendering UI graphs from two sources to balance development speed with production flexibility. The lookup process will follow a fallback mechanism: **Database-First, then Code Fallback.**
+## Intent Contract
 
-### 1.1. Source 1: Database (`UINode` Resource)
+`ui_intent` defines declarative user actions. `AshSDUI.Intent` resolves those
+declarations into a normalized, inspectable model and command envelope.
 
-This remains the primary source for production, A/B testing, and AI-driven mutations, as defined in the core ADR.
+### Intent metadata
 
-### 1.2. Source 2: Code-Based Layouts (Ash Resource DSL)
+Current intent metadata includes:
 
-To enable version-controlled, code-based defaults, a new extension `AshSDUI.Layout` will provide a DSL to define UI graphs directly within an Ash Resource.
+- `name`
+- `label`
+- `style`
+- `icon`
+- `component_override`
+- `target`
+- `confirm`
+- `placement`
+- `requires_actor?`
+- `visible_when`
+- `enabled_when`
+- `loading_when`
+- `refreshes`
 
-#### **DSL Specification:**
+### Supported target families
 
-The DSL will live inside a `sdui_layout` block and mirror the structure of the `UINode` resource.
+- `{:navigate, path}`
+- `{:patch, path}`
+- `{:event, event}`
+- `{:ash_action, action}`
+- `{:refresh, binding_or_view}`
+- `{:select, operation}`
+- `{:workflow, event}`
+- `{:custom, module, function}`
 
-```elixir
-# lib/my_app/ui/layouts/default_layouts.ex
-defmodule MyApp.UI.Layouts.DefaultLayouts do
-  use Ash.Resource, extensions: [AshSDUI.Layout]
+### Execution behavior
 
-  sdui_layout do
-    # Defines a code-based graph with the root name 'player-dashboard'
-    name "player-dashboard"
+`AshSDUI.Intent.command/3` returns the normalized command envelope for a
+resolved intent.
 
-    # The root node. `bind_subject: :self` binds to the actor/context.
-    node :root, component: "Layouts.TwoColumn@v1", bind_subject: :self do
+`AshSDUI.Intent.execute/3` preserves compatibility for direct execution-style
+consumers, but the command envelope is the canonical runtime representation.
 
-      # Children are nested. `region` maps to the parent's slots.
-      node :header, component: "UserProfile.Header@v1", bind_subject: :self, region: :sidebar
+`AshSDUI.LiveResource` is the default dispatcher for built-in command types.
 
-      node :bets, component: "Betting.ActiveBets@v1", bind_subject: :active_bets, region: :main
-    end
-  end
-end
-```
+## LiveResource Responsibilities
 
-### 1.3. Unified Lookup Logic
+`AshSDUI.LiveResource` is the primary generic runtime host for generated and
+semi-generated screens.
 
-The `use AshSDUI` macro in `SDUIPageLive` will inject `mount/3` logic that performs this unified lookup:
+Its current responsibilities include:
 
-1.  Receive the layout name (e.g., "player-dashboard") from the router.
-2.  **Attempt DB Lookup:** Query the `UINode` resource for a root node matching the name with `status: :published`.
-3.  **On DB Hit:** If found, fetch its descendants and render the graph from the database records.
-4.  **On DB Miss (Fallback):** If no published record is found, scan the compile-time registry for a code-based layout with the matching name.
-5.  **On Code Hit:** If found, render the graph directly from the parsed DSL structure.
-6.  **On Total Miss:** Raise an error.
+- resolve `AshSDUI.View`
+- plan and load bindings
+- mount and refresh runtime state
+- register subscriptions
+- handle binding-level live updates
+- host query, refresh, select, workflow, and save event surfaces
+- dispatch normalized intents
+- render stock recipes or SDUI layout recipes through the same runtime contract
 
----
+Generated collection, detail, and form screens should be treated as runtime
+specializations built on this host rather than as a separate rendering system.
 
-## 2. Developer Tooling & Experience
+## Layout and Renderer Contract
 
-### 2.1. Central Component Registry
+Layouts remain serializable trees with a stable public authoring API.
 
-The `use AshSDUI.Component` macro will register every component into a compile-time map stored in `:persistent_term`.
+Preferred authoring and lookup APIs:
 
-- **Key:** Component name string (e.g., `"UserProfile.Header@v1"`)
-- **Value:** A struct containing `{module, fragment, inferred_subject_types}`.
-- **Purpose:** This enables instant lookups for query generation, validation, and tooling without filesystem scans at runtime.
+- `AshSDUI.Layout.Builder.resource/2`
+- `AshSDUI.Layout.Builder.resources/3`
+- `AshSDUI.Layout.fetch/2`
+- `AshSDUI.Layout.register/2`
+- `AshSDUI.Layout.save/3`
+- `AshSDUI.Layout.publish/2`
+- `AshSDUI.LiveScreen.assign_layout/3`
 
-### 2.2. Storybook Integration for Isolated Development
+### Node metadata
 
-The system will provide a helper to render components in Phoenix Storybook without the full SDUI graph.
+`AshSDUI.Layout.Node` and `AshSDUI.Renderer.TreeNode` support:
 
-- **Helper:** `AshSDUI.render_in_storybook(component_name, assigns)`
-- **`assigns` Shape:** `%{subject: mock_ash_record, static_props: %{}, ...}`
-- **Example Story:**
+- `binding`
+- `refresh`
+- `variant`
+- `state_key`
 
-  ```elixir
-  # priv/storybook/components/user_profile_header.story.exs
-  defmodule MyAppWeb.Storybook.Components.UserProfile.Header do
-    use PhoenixStorybook.Story, :component
+These values are declarative and component-facing. They do not imply process
+isolation or separate LiveView processes per node.
 
-    def function, do: &AshSDUI.render_in_storybook/2
-    def component, do: "UserProfile.Header@v1" # From registry
+### Persisted layout behavior
 
-    def variations do
-      [
-        %Story.Variation{
-          id: :default,
-          attributes: %{
-            subject: %MyApp.Accounts.User{username: "Test User", avatar_url: ...},
-            static_props: %{}
-          }
-        }
-      ]
-    end
-  end
-  ```
+Persisted layout nodes store runtime metadata inside `static_props` under an
+internal `__ash_sdui__` envelope.
 
----
+Persisted layouts store only declarative node metadata. Runtime process state,
+subscription registrations, and in-memory refresh status are never persisted.
 
-## 3. Performance & Caching Strategy
+## SDUIRoot Contract
 
-### 3.1. UI Graph Caching (Layer 1)
+`AshSDUI.Components.SDUIRoot` passes the runtime contract into layout-rendered
+components.
 
-The structure of a UI graph from the database will be aggressively cached.
+The key injected assigns are:
 
-- **Mechanism:** An Ash Notifier on the `UINode` resource will trigger cache invalidation.
-- **Implementation:** A `Cache` GenServer will subscribe to the notifier. On any `create`, `update`, or `destroy` event for a `UINode`, it will evict the cache for that node's entire graph.
-- **Storage:** ETS for single-node deployments; Redis for multi-node.
-- **Cached Value:** The fully resolved tree of `UINode` records (as Elixir structs), ready for the rendering engine. The hydrated `subject` data is **not** cached here.
+- `node`
+- `view`
+- `bindings`
+- `state`
+- `context`
+- `binding_name`
+- `bound_value`
+- `refresh_meta`
+- `state_key`
+- `state_slice`
+- `node_refresh`
+- `node_variant`
 
-### 3.2. Data Hydration Optimization (Layer 2)
+Generic components should prefer consuming that contract instead of inventing
+parallel adapter layers.
 
-The `ResolveSubject` calculation will leverage `Ash.Dataloader` to prevent N+1 query problems during the data hydration phase. When resolving subjects for 10 nodes that all point to `Bet` resources, the dataloader will batch these into a single database query.
+## Query Model
 
----
+The current query model supports:
 
-## 4. Frontend & Asset Management
+- search
+- field filters
+- sorting
+- default sort
+- limit/page offset pagination
+- reset/query lifecycle events
 
-### 4.1. Asset Colocation Convention
+### Explicitly not yet implemented as first-class features
 
-Component-specific assets will be colocated by convention.
+The following are future work and should not be described as fully supported:
 
-- **Component:** `lib/my_app_web/components/user_profile/header.ex`
-- **JavaScript:** `assets/js/components/user_profile/header.js`
-- **CSS:** `assets/css/components/user_profile/header.css`
-- **Build Tooling:** The `esbuild` configuration will be updated to automatically discover and bundle any assets following this convention.
+- range filters
+- cursor pagination
+- richer grouped filter logic
+- stronger multi-sort UX semantics beyond current normalized sort support
 
-### 4.2. Client-Side State
+Future query work should extend the existing model rather than replace it.
 
-Ephemeral state will be managed using Phoenix's native JavaScript hooks.
+## Selection Semantics
 
-- **Mechanism:** Components will render a `phx-hook` attribute.
-  ```elixir
-  def render(assigns) do
-    ~H"""
-    <div phx-hook="ChartJS" data-chart-data={encode_json(@runtime_data.chart_points)}>
-      <canvas id={"chart-#{@id}"}></canvas>
-    </div>
-    """
-  end
-  ```
-- This provides a clean escape hatch for rich client-side interactivity without polluting the server-side state model.
+Selection is currently runtime state, not a separate DSL entity.
 
----
+The canonical stored form is selected IDs in `state.selected`.
+`LiveResource` may also hydrate convenience values like selected records for
+rendering, but those are implementation helpers rather than persisted concepts.
 
-## 5. Governance & Workflow
+`ui_selection` is intentionally deferred until the runtime-only selection model
+stops being sufficient.
 
-### 5.1. Preview & Publishing Workflow
+## Workflow Semantics
 
-The `UINode` resource will be enhanced to support a safe publishing workflow.
+Workflow is currently generic runtime state plus workflow-targeted intents.
 
-- **New Attribute:** `attribute :status, :atom, constraints: [one_of: [:draft, :published, :archived]], default: :draft, allow_nil?: false`
-- **Preview Logic:** The `use AshSDUI` macro will inspect the `socket.assigns.current_user` and `params`. If the user has a "preview" permission and a `?preview=true` param is present, the lookup logic will query for nodes with `status: :draft` instead of `:published`.
-- **Actions:** The `UINode` resource will have `publish` and `revert` actions that handle changing the status and archiving old versions.
+AshSDUI does not yet ship a formal workflow DSL. The public contract is:
 
-### 5.2. Auditing
+- views may expose workflow metadata
+- runtime state stores workflow values in `state.workflow`
+- intents may target workflow events
 
-All changes to the UI graph MUST be audited.
+`ui_workflow` remains intentionally deferred until the use cases justify a
+formal declarative schema.
 
-- **Implementation:** The `AshPaperTrail` extension will be added to the `UINode` resource.
-  ```elixir
-  # In MyApp.UI.UINode
-  use Ash.Resource, extensions: [AshPaperTrail.Resource]
-  ```
-- This provides a complete, out-of-the-box audit log, tracking which user or AI agent made what change and when.
+## Loading and Async Semantics
+
+`loading_when` is currently declarative render metadata, not a full automatic
+async intent lifecycle manager.
+
+The long-term direction is to standardize loading state through
+`state.loading[intent_name]` and related runtime keys, but that lifecycle is not
+yet fully automated across all intent types.
+
+Docs, examples, and reviews should describe the current loading behavior
+accurately rather than imply a generalized async state machine.
+
+## Demo as Proof Surface
+
+`examples/sdui_demo` is the public API tour for the library. The demo coverage
+matrix in `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/examples/sdui_demo/README.md`
+acts as the proof map between:
+
+- public features
+- canonical demo routes
+- Storybook surfaces
+- regression tests
+
+New public features should not be considered complete until that matrix is
+updated.
+
+## Remaining Roadmap Themes
+
+The current implementation is intentionally generic, but a few areas remain open
+for future enhancement:
+
+- query extensions
+- deeper async intent lifecycle management
+- optional workflow DSL formalization
+- more explicit transport adapters beyond Phoenix PubSub
+- stronger component-level live ergonomics built on the existing runtime
+
+Those should be treated as additive work on top of the runtime contract in this
+spec, not as reasons to redesign the package again.

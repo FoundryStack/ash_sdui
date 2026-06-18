@@ -49,6 +49,11 @@ defmodule AshSDUI.LiveResource do
       end
 
       @impl true
+      def handle_info(message, socket) do
+        AshSDUI.LiveResource.handle_resource_info(__MODULE__, message, socket)
+      end
+
+      @impl true
       def render(assigns) do
         AshSDUI.LiveResource.render_resource(assigns)
       end
@@ -64,6 +69,7 @@ defmodule AshSDUI.LiveResource do
 
       defoverridable mount: 3,
                      handle_event: 3,
+                     handle_info: 2,
                      handle_params: 3,
                      render: 1,
                      ash_sdui_context: 3,
@@ -78,6 +84,7 @@ defmodule AshSDUI.LiveResource do
   import Phoenix.LiveView
 
   alias AshSDUI.Context
+  alias AshSDUI.Intent
   alias AshSDUI.Query
   alias AshSDUI.View
 
@@ -103,6 +110,11 @@ defmodule AshSDUI.LiveResource do
          {:ok, bindings} <- load_bindings(view, opts, params),
          runtime_view = enrich_view(view, bindings),
          {:ok, socket} <- assign_data(socket, runtime_view, bindings, opts, params) do
+      socket =
+        socket
+        |> assign(:ash_sdui_subscription_specs, subscription_specs(runtime_view, opts))
+        |> register_subscriptions(runtime_view, opts)
+
       {:ok,
        socket
        |> assign(:ash_sdui_ui, ui)
@@ -151,6 +163,14 @@ defmodule AshSDUI.LiveResource do
     {:noreply, assign(socket, :ash_sdui_uri, uri)}
   end
 
+  def handle_resource_info(owner, message, socket) do
+    case apply_live_message(owner, socket, message) do
+      {:ok, socket} -> {:noreply, socket}
+      :ignore -> {:noreply, socket}
+      {:error, reason} -> {:noreply, put_flash(socket, :error, inspect(reason))}
+    end
+  end
+
   def handle_resource_event(_owner, "validate", params, socket) do
     form_name = form_name(socket.assigns.ash_sdui_resource)
     form_params = Map.get(params, form_name, %{})
@@ -178,6 +198,22 @@ defmodule AshSDUI.LiveResource do
   def handle_resource_event(_owner, "reset_query", _params, socket) do
     query = socket.assigns.ash_sdui_view.state.query
     {:noreply, patch_query(socket, Query.update(query, :reset, %{}))}
+  end
+
+  def handle_resource_event(owner, "refresh", params, socket) do
+    {:noreply, refresh_socket(owner, socket, params)}
+  end
+
+  def handle_resource_event(_owner, "select", params, socket) do
+    {:noreply, update_selection(socket, params)}
+  end
+
+  def handle_resource_event(_owner, "workflow", params, socket) do
+    {:noreply, update_workflow(socket, params)}
+  end
+
+  def handle_resource_event(owner, "intent", params, socket) do
+    {:noreply, dispatch_intent(owner, params, socket)}
   end
 
   def handle_resource_event(owner, "save", params, socket) do
@@ -226,6 +262,9 @@ defmodule AshSDUI.LiveResource do
     ~H"""
       <AshSDUI.Components.SDUIRoot.render
         tree={@__sdui_tree__}
+        view={@ash_sdui_view}
+        bindings={@ash_sdui_bindings}
+        state={@ash_sdui_state}
         context={@ash_sdui_view.context}
         domain={root_domain(@ash_sdui_resource, @ash_sdui_opts)}
       />
@@ -591,6 +630,11 @@ defmodule AshSDUI.LiveResource do
          {:ok, bindings} <- load_bindings(view, opts, params),
          runtime_view = enrich_view(view, bindings),
          {:ok, socket} <- assign_data(socket, runtime_view, bindings, opts, params) do
+      socket =
+        socket
+        |> assign(:ash_sdui_subscription_specs, subscription_specs(runtime_view, opts))
+        |> register_subscriptions(runtime_view, opts)
+
       {:ok,
        socket
        |> assign(:ash_sdui_resource, runtime_view.resource)
@@ -616,7 +660,17 @@ defmodule AshSDUI.LiveResource do
         primary_record: primary_record_value(view, bindings)
       })
 
-    %{view | state: %{state | assigns: state_assigns}}
+    %{view | state: %{state | assigns: state_assigns, refresh: refresh_state(bindings, state)}}
+  end
+
+  defp refresh_state(bindings, %View.State{} = state) do
+    current = state.refresh || %{}
+
+    bindings
+    |> Enum.reduce(current, fn {name, _value}, acc ->
+      Map.put_new(acc, name, %{status: :ready, refreshed_at: DateTime.utc_now()})
+    end)
+    |> Map.put_new(:last_refreshed_at, DateTime.utc_now())
   end
 
   defp normalize_macro_value(value, env) do
@@ -742,4 +796,387 @@ defmodule AshSDUI.LiveResource do
     do: Enum.all?(value, fn {_k, v} -> blank_query_value?(v) end)
 
   defp blank_query_value?(_value), do: false
+
+  defp refresh_socket(owner, socket, params) do
+    if binding = refresh_binding_name(params) do
+      refresh_single_binding(owner, socket, binding)
+    else
+      refresh_view(owner, socket, params)
+    end
+  end
+
+  defp refresh_view(owner, socket, params) do
+    ui = socket.assigns.ash_sdui_ui
+    mode = socket.assigns.ash_sdui_mode
+    opts = socket.assigns.ash_sdui_opts
+    session = socket.assigns[:ash_sdui_session] || %{}
+    current_params = socket.assigns[:ash_sdui_params] || %{}
+    merged_params = Map.merge(current_params, params)
+
+    case refresh_resource(owner, ui, mode, opts, merged_params, session, socket) do
+      {:ok, refreshed} ->
+        refreshed
+        |> put_flash(:info, refresh_message(params))
+        |> update_runtime_state(fn state ->
+          %{
+            state
+            | refresh: Map.put(state.refresh || %{}, :last_refreshed_at, DateTime.utc_now())
+          }
+        end)
+
+      {:error, _reason} ->
+        put_flash(socket, :error, "Could not refresh view.")
+    end
+  end
+
+  defp dispatch_intent(owner, %{"intent" => intent_name} = params, socket) do
+    with {:ok, intent} <- lookup_intent(socket.assigns.ash_sdui_view, intent_name),
+         {:ok, command} <- Intent.command(intent, params, intent_runtime(socket, params)) do
+      apply_intent_command(owner, socket, intent, command)
+    else
+      {:error, _reason} ->
+        put_flash(socket, :error, "Intent could not be executed.")
+    end
+  end
+
+  defp dispatch_intent(_owner, _params, socket), do: socket
+
+  defp apply_intent_command(_owner, socket, _intent, %{type: :navigate, meta: %{to: to}}) do
+    push_navigate(socket, to: to)
+  end
+
+  defp apply_intent_command(_owner, socket, _intent, %{type: :patch, meta: %{to: to}}) do
+    push_patch(socket, to: to)
+  end
+
+  defp apply_intent_command(owner, socket, _intent, %{type: :refresh, meta: meta}) do
+    refresh_socket(owner, socket, refresh_params(meta))
+  end
+
+  defp apply_intent_command(_owner, socket, _intent, %{
+         type: :select,
+         meta: %{operation: operation},
+         payload: payload
+       }) do
+    selection_params =
+      payload
+      |> Map.take(["id", :id])
+      |> Map.put_new("operation", normalize_selection_operation(operation))
+
+    update_selection(socket, selection_params)
+  end
+
+  defp apply_intent_command(_owner, socket, _intent, %{type: :workflow, meta: %{event: event}}) do
+    update_workflow(socket, %{"event" => to_string(event)})
+  end
+
+  defp apply_intent_command(_owner, socket, _intent, %{
+         type: :event,
+         meta: %{event: event},
+         payload: payload
+       }) do
+    socket
+    |> put_flash(:info, "Triggered #{event}.")
+    |> update_runtime_state(fn state ->
+      %{state | assigns: Map.put(state.assigns || %{}, :last_event, payload)}
+    end)
+  end
+
+  defp apply_intent_command(_owner, socket, _intent, %{type: :ash_action}) do
+    put_flash(socket, :info, "Use the generated form flow to run this action.")
+  end
+
+  defp apply_intent_command(_owner, socket, _intent, _command), do: socket
+
+  defp lookup_intent(%View{intents: intents}, intent_name) do
+    intent_atom =
+      cond do
+        is_atom(intent_name) -> intent_name
+        is_binary(intent_name) -> String.to_existing_atom(intent_name)
+        true -> intent_name
+      end
+
+    case Enum.find(intents, &(&1.name == intent_atom)) do
+      nil -> {:error, :intent_not_found}
+      intent -> {:ok, intent}
+    end
+  rescue
+    ArgumentError -> {:error, :invalid_intent}
+  end
+
+  defp intent_runtime(socket, params) do
+    %{
+      actor: socket.assigns.ash_sdui_context.actor,
+      tenant: socket.assigns.ash_sdui_context.tenant,
+      domain: root_domain(socket.assigns.ash_sdui_resource, socket.assigns.ash_sdui_opts),
+      resource: socket.assigns.ash_sdui_resource,
+      record: socket.assigns[:subject],
+      params: params
+    }
+  end
+
+  defp refresh_params(%{binding: nil}), do: %{}
+  defp refresh_params(%{binding: :view}), do: %{}
+
+  defp refresh_params(%{binding: binding}) when is_atom(binding),
+    do: %{"binding" => Atom.to_string(binding)}
+
+  defp refresh_params(_meta), do: %{}
+
+  defp update_selection(socket, params) do
+    selection =
+      socket.assigns.ash_sdui_state.selected
+      |> apply_selection(params)
+
+    socket
+    |> update_runtime_state(fn state -> %{state | selected: selection} end)
+    |> maybe_assign_selected_records()
+  end
+
+  defp apply_selection(_current, %{"operation" => "clear"}), do: []
+
+  defp apply_selection(current, %{"id" => id}) do
+    current_ids = Enum.map(current, &to_string/1)
+
+    if id in current_ids do
+      Enum.reject(current_ids, &(&1 == id))
+    else
+      current_ids ++ [id]
+    end
+  end
+
+  defp apply_selection(current, %{"operation" => operation, "id" => id}) do
+    current_ids = Enum.map(current, &to_string/1)
+
+    case operation do
+      "set" ->
+        [id]
+
+      "add" ->
+        Enum.uniq(current_ids ++ [id])
+
+      "remove" ->
+        Enum.reject(current_ids, &(&1 == id))
+
+      _ ->
+        if id in current_ids, do: Enum.reject(current_ids, &(&1 == id)), else: current_ids ++ [id]
+    end
+  end
+
+  defp apply_selection(current, _params), do: current
+
+  defp maybe_assign_selected_records(
+         %{assigns: %{records: records, ash_sdui_state: state}} = socket
+       )
+       when is_list(records) do
+    selected_ids = MapSet.new(Enum.map(state.selected || [], &to_string/1))
+    selected_records = Enum.filter(records, &(to_string(Map.get(&1, :id)) in selected_ids))
+
+    assign(socket, :selected_records, selected_records)
+  end
+
+  defp maybe_assign_selected_records(socket), do: socket
+
+  defp update_workflow(socket, params) do
+    next_workflow =
+      socket.assigns.ash_sdui_state.workflow
+      |> Map.merge(%{
+        state: Map.get(params, "state", Map.get(params, :state)) || workflow_transition(params),
+        last_event: Map.get(params, "event", Map.get(params, :event)),
+        updated_at: DateTime.utc_now()
+      })
+
+    update_runtime_state(socket, fn state -> %{state | workflow: next_workflow} end)
+  end
+
+  defp workflow_transition(%{"event" => event}), do: event
+  defp workflow_transition(%{event: event}), do: event
+  defp workflow_transition(_params), do: nil
+
+  defp update_runtime_state(socket, fun) when is_function(fun, 1) do
+    state = fun.(socket.assigns.ash_sdui_state)
+    view = %{socket.assigns.ash_sdui_view | state: state}
+
+    socket
+    |> assign(:ash_sdui_state, state)
+    |> assign(:ash_sdui_view, view)
+  end
+
+  defp normalize_selection_operation({mode, _opts}) when is_atom(mode), do: Atom.to_string(mode)
+  defp normalize_selection_operation(mode) when is_atom(mode), do: Atom.to_string(mode)
+  defp normalize_selection_operation(mode) when is_binary(mode), do: mode
+  defp normalize_selection_operation(_mode), do: "toggle"
+
+  defp apply_live_message(owner, socket, {:ash_sdui_poll, binding}) do
+    {:ok, refresh_single_binding(owner, socket, binding)}
+  end
+
+  defp apply_live_message(_owner, socket, message) do
+    case matching_live_binding(socket, message) do
+      nil ->
+        :ignore
+
+      binding ->
+        with {:ok, current} <- current_binding_value(socket, binding.name),
+             {:ok, next, _meta} <- AshSDUI.Binding.apply_update(binding, current, message) do
+          {:ok, update_binding_runtime(socket, binding, next)}
+        end
+    end
+  end
+
+  defp matching_live_binding(socket, message) do
+    socket.assigns.ash_sdui_view.bindings
+    |> Enum.find(&AshSDUI.Binding.subscription_match?(&1, message))
+  end
+
+  defp current_binding_value(socket, binding_name) do
+    {:ok, Map.get(socket.assigns.ash_sdui_bindings || %{}, binding_name)}
+  end
+
+  defp refresh_single_binding(owner, socket, binding_name) do
+    view = socket.assigns.ash_sdui_view
+    binding = Enum.find(view.bindings, &(&1.name == binding_name))
+
+    if binding do
+      case load_single_binding(
+             binding,
+             view,
+             socket.assigns.ash_sdui_opts,
+             socket.assigns.ash_sdui_params
+           ) do
+        {:ok, value} ->
+          update_binding_runtime(socket, binding, value)
+          |> maybe_schedule_poll(binding)
+
+        {:error, _reason} ->
+          put_flash(socket, :error, "Could not refresh #{binding_name}.")
+      end
+    else
+      refresh_view(owner, socket, %{})
+    end
+  end
+
+  defp load_single_binding(binding, view, opts, params) do
+    load_opts =
+      [
+        actor: view.context.actor,
+        tenant: view.context.tenant,
+        domain: root_domain(view.resource, opts),
+        record_id: params["id"] || params[:id],
+        record: primary_record_value(view, current_bindings_for_load(view, opts, params))
+      ]
+      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+
+    case AshSDUI.Binding.load([binding], load_opts) do
+      {:ok, values} when is_map(values) -> {:ok, Map.get(values, binding.name)}
+      {:ok, _} -> {:error, :missing_binding_value}
+      {:error, {_name, reason}} -> {:error, reason}
+    end
+  end
+
+  defp current_bindings_for_load(view, opts, params) do
+    case load_bindings(view, opts, params) do
+      {:ok, bindings} -> bindings
+      _ -> %{}
+    end
+  end
+
+  defp update_binding_runtime(socket, binding, value) do
+    bindings = Map.put(socket.assigns.ash_sdui_bindings || %{}, binding.name, value)
+    view = enrich_view(socket.assigns.ash_sdui_view, bindings)
+
+    socket
+    |> assign(:ash_sdui_bindings, bindings)
+    |> assign(:ash_sdui_state, mark_binding_refreshed(view.state, binding.name))
+    |> assign(:ash_sdui_view, %{view | state: mark_binding_refreshed(view.state, binding.name)})
+    |> sync_runtime_data(view, bindings)
+    |> maybe_assign_layout(%{view | state: mark_binding_refreshed(view.state, binding.name)})
+  end
+
+  defp sync_runtime_data(socket, view, bindings) do
+    case assign_data(
+           socket,
+           view,
+           bindings,
+           socket.assigns.ash_sdui_opts,
+           socket.assigns.ash_sdui_params
+         ) do
+      {:ok, socket} -> socket
+      {:error, _reason} -> socket
+    end
+  end
+
+  defp mark_binding_refreshed(%View.State{} = state, binding_name) do
+    refresh =
+      state.refresh
+      |> Map.put(binding_name, %{status: :ready, refreshed_at: DateTime.utc_now()})
+      |> Map.put(:last_refreshed_at, DateTime.utc_now())
+
+    %{state | refresh: refresh}
+  end
+
+  defp subscription_specs(view, opts) do
+    AshSDUI.Binding.subscription_specs(view.bindings,
+      pubsub_server: Keyword.get(opts, :pubsub_server)
+    )
+  end
+
+  defp register_subscriptions(socket, view, opts) do
+    specs = subscription_specs(view, opts)
+
+    if connected?(socket) do
+      Enum.each(specs, &register_subscription(socket, &1))
+    end
+
+    assign(socket, :ash_sdui_subscription_specs, specs)
+  end
+
+  defp register_subscription(_socket, %{kind: :poll, binding: binding, interval: interval})
+       when is_integer(interval) and interval > 0 do
+    Process.send_after(self(), {:ash_sdui_poll, binding}, interval)
+  end
+
+  defp register_subscription(socket, %{kind: :pubsub, topic: topic} = spec)
+       when not is_nil(topic) do
+    if pubsub_server = Map.get(spec, :pubsub_server) || endpoint_pubsub_server(socket) do
+      Phoenix.PubSub.subscribe(pubsub_server, topic)
+    end
+  end
+
+  defp register_subscription(_socket, _spec), do: :ok
+
+  defp maybe_schedule_poll(socket, %AshSDUI.Binding{
+         subscription: %{kind: :poll, interval: interval},
+         name: name
+       })
+       when is_integer(interval) and interval > 0 do
+    Process.send_after(self(), {:ash_sdui_poll, name}, interval)
+    socket
+  end
+
+  defp maybe_schedule_poll(socket, _binding), do: socket
+
+  defp endpoint_pubsub_server(socket) do
+    endpoint = socket.endpoint
+
+    cond do
+      is_nil(endpoint) -> nil
+      function_exported?(endpoint, :config, 1) -> endpoint.config(:pubsub_server)
+      true -> nil
+    end
+  rescue
+    _ -> nil
+  end
+
+  defp refresh_binding_name(%{"binding" => binding}) when is_binary(binding) do
+    String.to_existing_atom(binding)
+  rescue
+    ArgumentError -> nil
+  end
+
+  defp refresh_binding_name(%{binding: binding}) when is_atom(binding), do: binding
+  defp refresh_binding_name(_params), do: nil
+
+  defp refresh_message(%{"binding" => binding}), do: "Refreshed #{binding}."
+  defp refresh_message(_params), do: "Refreshed view."
 end

@@ -2,6 +2,7 @@ defmodule AshSDUI.LiveResourceTest do
   use ExUnit.Case, async: false
 
   alias AshSDUI.TestFixtures.LiveResourceBlog, as: Blog
+  alias AshSDUI.TestFixtures.LiveCollectionPostUI
   alias AshSDUI.TestFixtures.LiveResourcePost, as: Post
   alias AshSDUI.TestFixtures.LiveResourcePostUI, as: PostUI
 
@@ -39,6 +40,32 @@ defmodule AshSDUI.LiveResourceTest do
       assigns: %{layout: :sdui}
   end
 
+  defmodule FeedLive do
+    use AshSDUI.LiveResource,
+      ui: LiveCollectionPostUI,
+      view: :index,
+      domain: Blog,
+      pubsub_server: AshSDUI.TestPubSub
+
+    def ash_sdui_context(_params, _session, _socket) do
+      %{
+        assigns: %{
+          seed_feed: [
+            %{id: "feed-1", title: "Seed item", body: "Initial body", status: "seed"}
+          ]
+        }
+      }
+    end
+
+    def ash_sdui_view_opts(_mode, _params, _session, _socket) do
+      [
+        recipe_overrides: [
+          content: [component: "AshSDUI.StreamList@v1", props: %{binding_name: :collection}]
+        ]
+      ]
+    end
+  end
+
   defp html(rendered) do
     rendered
     |> Phoenix.HTML.Safe.to_iodata()
@@ -46,7 +73,9 @@ defmodule AshSDUI.LiveResourceTest do
   end
 
   setup do
+    Application.ensure_all_started(:phoenix_pubsub)
     Ash.DataLayer.Ets.stop(Post)
+    start_supervised!({Phoenix.PubSub, name: AshSDUI.TestPubSub})
     :ok
   end
 
@@ -110,5 +139,54 @@ defmodule AshSDUI.LiveResourceTest do
     assert output =~ "generic-view"
     assert output =~ "Launch Post"
     assert output =~ "New Post"
+  end
+
+  test "generic selection and workflow events update runtime state" do
+    assert {:ok, post} =
+             Ash.create(Post, %{title: "Selectable Post"}, action: :create, domain: Blog)
+
+    assert {:ok, socket} = PostsLive.mount(%{}, %{}, %Phoenix.LiveView.Socket{})
+
+    assert {:noreply, selected_socket} =
+             PostsLive.handle_event("select", %{"id" => post.id}, socket)
+
+    assert selected_socket.assigns.ash_sdui_state.selected == [post.id]
+
+    assert {:noreply, workflow_socket} =
+             PostsLive.handle_event("workflow", %{"event" => "review"}, selected_socket)
+
+    assert workflow_socket.assigns.ash_sdui_state.workflow.state == "review"
+    assert workflow_socket.assigns.ash_sdui_view.state.workflow.state == "review"
+  end
+
+  test "live collection messages update only the subscribed binding runtime" do
+    assert {:ok, socket} = FeedLive.mount(%{}, %{}, %Phoenix.LiveView.Socket{})
+
+    assert Enum.map(socket.assigns.records, & &1.id) == ["feed-1"]
+    assert socket.assigns.ash_sdui_state.refresh.collection.status == :ready
+
+    assert {:noreply, appended_socket} =
+             FeedLive.handle_info(
+               {:ash_sdui_event, :feed_update,
+                %{operation: :append, item: %{id: "feed-2", title: "Next item", status: "append"}}},
+               socket
+             )
+
+    assert Enum.map(appended_socket.assigns.records, & &1.id) == ["feed-1", "feed-2"]
+    assert appended_socket.assigns.ash_sdui_state.refresh.collection.status == :ready
+    assert appended_socket.assigns.ash_sdui_view.state.refresh.collection.refreshed_at
+
+    assert {:noreply, merged_socket} =
+             FeedLive.handle_info(
+               {:ash_sdui_event, :feed_update,
+                %{
+                  operation: :merge,
+                  item: %{id: "feed-1", title: "Updated seed", status: "merge"}
+                }},
+               appended_socket
+             )
+
+    assert Enum.find(merged_socket.assigns.records, &(&1.id == "feed-1")).title == "Updated seed"
+    assert Enum.map(merged_socket.assigns.records, & &1.id) == ["feed-1", "feed-2"]
   end
 end

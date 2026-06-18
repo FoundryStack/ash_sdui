@@ -17,6 +17,24 @@ defmodule AshSDUI.SDUIRootDispatchTest do
     end
   end
 
+  defmodule RuntimeAwareCard do
+    use Phoenix.Component
+
+    def render(assigns) do
+      ~H"""
+      <div
+        class="runtime-aware-card"
+        data-testid="runtime-aware-card"
+        data-binding={@binding_name}
+        data-state={@state_slice && @state_slice.state}
+        data-status={@refresh_meta[:status]}
+      >
+        {List.first(@bound_value || [])[:label]}
+      </div>
+      """
+    end
+  end
+
   setup do
     AshSDUI.Cache.start_link()
     :persistent_term.put({AshSDUI.Registry, :components}, %{})
@@ -81,6 +99,44 @@ defmodule AshSDUI.SDUIRootDispatchTest do
 
       html = render_component(&AshSDUI.Components.SDUIRoot.render/1, %{tree: tree})
       assert html =~ "assertions-passed"
+    end
+
+    test "passes runtime bindings and state slices to registered components" do
+      AshSDUI.Registry.register(
+        "RuntimeAware@v1",
+        RuntimeAwareCard,
+        %{fragment: "fragment X on Test { id }", subject_types: ["Test"]}
+      )
+
+      tree =
+        %AshSDUI.Renderer.TreeNode{
+          id: "runtime-aware",
+          component_name: "RuntimeAware@v1",
+          static_props: %{},
+          subject_resource: nil,
+          subject_id: nil,
+          region: :default,
+          order: 0,
+          binding: :metrics,
+          state_key: :workflow,
+          children: []
+        }
+
+      html =
+        render_component(&AshSDUI.Components.SDUIRoot.render/1, %{
+          tree: tree,
+          bindings: %{metrics: [%{label: "Active sessions"}]},
+          state: %AshSDUI.View.State{
+            refresh: %{metrics: %{status: :ready}},
+            workflow: %{state: "review"}
+          }
+        })
+
+      assert html =~ "runtime-aware-card"
+      assert html =~ ~s(data-binding="metrics")
+      assert html =~ ~s(data-state="review")
+      assert html =~ ~s(data-status="ready")
+      assert html =~ "Active sessions"
     end
   end
 

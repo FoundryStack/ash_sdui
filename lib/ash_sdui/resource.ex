@@ -44,7 +44,9 @@ defmodule AshSDUI.Resource do
       layout: [type: :atom, doc: "Optional named app layout hint"],
       title: [type: :string, doc: "Default view title"],
       empty_state: [type: :string, doc: "Default empty state copy"],
-      query: [type: :atom, doc: "Named query schema used by this view"]
+      query: [type: :atom, doc: "Named query schema used by this view"],
+      refresh: [type: :any, doc: "Optional refresh metadata for the view runtime"],
+      workflow: [type: :any, doc: "Optional workflow metadata for the view runtime"]
     ]
   }
 
@@ -83,7 +85,19 @@ defmodule AshSDUI.Resource do
         default: false,
         doc: "Whether this intent should be hidden when no actor is present"
       ],
-      visible_when: [type: :atom, doc: "Named application predicate used by variant resolvers"]
+      visible_when: [type: :atom, doc: "Named application predicate used by variant resolvers"],
+      enabled_when: [
+        type: :any,
+        doc: "Predicate hint for whether the intent should be enabled in the current runtime"
+      ],
+      loading_when: [
+        type: :any,
+        doc: "Predicate hint for whether the intent should render in a loading state"
+      ],
+      refreshes: [
+        type: {:list, :atom},
+        doc: "Binding names that should refresh after the intent succeeds"
+      ]
     ]
   }
 
@@ -144,11 +158,19 @@ defmodule AshSDUI.Resource do
         type: :any,
         required: true,
         doc:
-          "Binding source such as {:resource, MyApp.Post}, {:relationship, :comments}, or {:assign, :current_user}"
+          "Binding source such as {:resource, MyApp.Post}, {:relationship, :comments}, {:poll, {:resource, MyApp.Post}, interval: 5_000}, {:pubsub, \"posts\", source: {:assign, :seed_posts}, event: :post_update, reducer: :stream_event}, or {:stream, {:assign, :items}, key: :id, reducer: :stream_event}"
       ],
       many?: [type: :boolean, doc: "Whether the binding resolves to many records"],
       query: [type: :atom, doc: "Named query schema applied when loading the binding"],
-      default: [type: :any, doc: "Fallback value if the binding cannot be resolved"]
+      default: [type: :any, doc: "Fallback value if the binding cannot be resolved"],
+      refresh: [
+        type: :any,
+        doc: "Refresh policy such as :manual, :params, or {:interval, 5_000}"
+      ],
+      update: [
+        type: :any,
+        doc: "Update strategy such as :replace, :append, :merge, or :remove"
+      ]
     ]
   }
 

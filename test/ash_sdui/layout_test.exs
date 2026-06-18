@@ -51,6 +51,24 @@ defmodule AshSDUI.LayoutTest do
       assert header.order == 0
     end
 
+    test "node runtime metadata is preserved for code-defined layouts" do
+      root =
+        Builder.node("Layouts.Runtime@v1",
+          binding: :metrics,
+          refresh: :manual,
+          variant: :info,
+          state_key: :workflow
+        )
+
+      Layout.register("runtime-metadata-layout", root)
+
+      assert {:ok, layout} = Layout.fetch("runtime-metadata-layout", source: :registered)
+      assert layout.root.binding == :metrics
+      assert layout.root.refresh == :manual
+      assert layout.root.variant == :info
+      assert layout.root.state_key == :workflow
+    end
+
     test "all/0 returns registered layouts" do
       names = Layout.all() |> Enum.map(& &1.name)
       assert "test-dashboard" in names
@@ -134,6 +152,25 @@ defmodule AshSDUI.LayoutTest do
 
       assert layout.root.component == "Custom.Root@v1"
       assert Enum.map(layout.root.children, & &1.component) == ["Custom.Child@v1"]
+    end
+
+    test "save/3 and fetch/2 preserve node runtime metadata through stored layouts" do
+      root =
+        Builder.node("Stored.Runtime@v1",
+          binding: :feed,
+          refresh: :subscription,
+          variant: :warning,
+          state_key: [:workflow, :state]
+        )
+
+      assert {:ok, _records} = Layout.save("stored-runtime-metadata", root, status: :published)
+      assert {:ok, layout} = Layout.fetch("stored-runtime-metadata", source: :stored)
+
+      assert layout.root.binding == :feed
+      assert layout.root.refresh == :subscription
+      assert layout.root.variant == :warning
+      assert layout.root.state_key == [:workflow, :state]
+      assert layout.root.static_props == %{}
     end
   end
 

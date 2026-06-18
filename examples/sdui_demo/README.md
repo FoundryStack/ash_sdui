@@ -1,5 +1,19 @@
 # AshSDUI Demo Coverage Matrix
 
+This demo is the public proof surface for the current runtime spec.
+
+It covers the package's evolution from generated CRUD views into a broader
+runtime model with:
+
+- explicit `view`, `bindings`, `state`, and `context`
+- refreshable and subscribed bindings
+- streaming collection updates
+- selection and workflow state
+- hybrid layouts with node-scoped runtime metadata
+
+Treat the matrix below as the acceptance map for promoted features. If a public
+feature is missing from this table, it is not fully demoed yet.
+
 This demo is a public API tour for `ash_sdui`. Each promoted feature should have:
 - one canonical demo route,
 - one Storybook entry when visual isolation helps,
@@ -12,6 +26,11 @@ This demo is a public API tour for `ash_sdui`. Each promoted feature should have
 | Generated create form | `/posts/new` | `/storybook/components/post_ui_new` | `SduiDemoWeb.Live.BlogLiveTest` | `AshSDUI.LiveResource`, `AshSDUI.Form.fields/2` |
 | Generated edit form | `/posts/:id/edit` | `/storybook/components/post_ui_edit` | `SduiDemoWeb.Live.BlogLiveTest` | `AshSDUI.LiveResource`, metadata-driven form rendering |
 | Query lifecycle | `/posts/generated` | `/storybook/components/post_ui_filtered` | `SduiDemoWeb.Live.BlogLiveTest` | `AshSDUI.Query`, query params, sort, pagination, reset |
+| Live collection bindings | `/live/feed` | `/storybook/components/stream_list` | `SduiDemoWeb.Live.LiveRuntimeTest` | `AshSDUI.Binding`, `AshSDUI.Components.StreamList`, PubSub-backed append/merge/remove updates |
+| Refreshable runtime panels | `/live/metrics` | `/storybook/components/metric_grid` | `SduiDemoWeb.Live.LiveRuntimeTest` | `AshSDUI.View.State`, `AshSDUI.Intent`, `AshSDUI.Components.MetricGrid`, `AshSDUI.Components.ActivityFeed` |
+| Selection-aware intents | `/live/selection` | `/storybook/components/selection_bar` | `SduiDemoWeb.Live.LiveRuntimeTest` | `AshSDUI.View.State.selected`, `AshSDUI.Components.SelectionBar`, generic `intent` event surface |
+| Workflow state | `/live/workflow` | `/storybook/components/status_badge` | `SduiDemoWeb.Live.LiveRuntimeTest` | `AshSDUI.View.State.workflow`, `AshSDUI.Components.StatusBadge`, workflow-targeted intents |
+| Hybrid live layout | `/live/hybrid` | `/storybook/layouts/live_hybrid_layout` | `SduiDemoWeb.Live.LiveRuntimeTest` | `AshSDUI.LiveScreen.assign_layout/3`, node `binding`/`state_key`/`variant` metadata, `AshSDUI.Components.SDUIRoot` |
 | Custom recipe path | `/posts` | `/storybook/components/editorial_posts_page` | `SduiDemoWeb.Live.BlogLiveTest` | `layout: :sdui`, `recipe_overrides`, app recipe |
 | Ephemeral runtime layouts | `/posts/:id` | `/storybook/layouts/post_show_layout` | `SduiDemoWeb.Live.BlogLiveTest` | `AshSDUI.LiveScreen.assign_layout/3` |
 | Raw render tree | `/layouts/raw-tree` | `/storybook/layouts/raw_tree_showcase` | `SduiDemoWeb.Live.LayoutShowcaseTest` | `AshSDUI.Layout.Builder.to_tree/1`, `AshSDUI.Components.SDUIRoot` |

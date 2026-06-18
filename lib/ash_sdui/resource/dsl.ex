@@ -12,6 +12,9 @@ defmodule AshSDUI.Resource.UiIntent do
     :placement,
     :requires_actor?,
     :visible_when,
+    :enabled_when,
+    :loading_when,
+    :refreshes,
     :__spark_metadata__
   ]
 
@@ -27,6 +30,9 @@ defmodule AshSDUI.Resource.UiIntent do
           placement: atom | nil,
           requires_actor?: boolean,
           visible_when: atom | nil,
+          enabled_when: term,
+          loading_when: term,
+          refreshes: [atom] | nil,
           __spark_metadata__: any
         }
 end
@@ -42,6 +48,8 @@ defmodule AshSDUI.Resource.View do
     :title,
     :empty_state,
     :query,
+    :refresh,
+    :workflow,
     :__spark_metadata__
   ]
 
@@ -54,6 +62,8 @@ defmodule AshSDUI.Resource.View do
           title: String.t() | nil,
           empty_state: String.t() | nil,
           query: atom | nil,
+          refresh: term,
+          workflow: term,
           __spark_metadata__: any
         }
 end
@@ -111,6 +121,8 @@ defmodule AshSDUI.Resource.UiBinding do
     :many?,
     :query,
     :default,
+    :refresh,
+    :update,
     :__spark_metadata__
   ]
 
@@ -120,6 +132,8 @@ defmodule AshSDUI.Resource.UiBinding do
           many?: boolean | nil,
           query: atom | nil,
           default: term,
+          refresh: term,
+          update: term,
           __spark_metadata__: any
         }
 end
