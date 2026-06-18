@@ -160,6 +160,33 @@ defmodule AshSDUI.Intent do
     end
   end
 
+  @doc """
+  Returns the normalized UI presentation for an intent.
+  """
+  @spec presentation(t | struct | map, map | keyword | nil, map) :: map
+  def presentation(intent, subject \\ nil, opts \\ %{})
+
+  def presentation(intent, subject, opts) when not is_struct(intent, __MODULE__) do
+    presentation(resolve(intent), subject, opts)
+  end
+
+  def presentation(%__MODULE__{} = intent, subject, opts) do
+    opts = normalize_payload(opts)
+    override = normalize_payload(Map.get(opts, :override, %{}))
+    state = Map.get(opts, :state)
+    bindings = normalize_payload(Map.get(opts, :bindings, %{}))
+    target = Map.get(override, :target, intent.target)
+
+    %{
+      kind: target_kind(target),
+      to: target_to(target, subject),
+      event: target_event(target, intent.name),
+      confirm: Map.get(override, :confirm, intent.confirm),
+      enabled?: enabled?(intent, bindings, state),
+      loading?: loading?(intent, state)
+    }
+  end
+
   defp label_backend(_source, %Context{} = context), do: context.assigns[:ui]
   defp label_backend(_source, backend_or_module), do: backend_or_module
 
@@ -202,4 +229,85 @@ defmodule AshSDUI.Intent do
   defp normalize_runtime(runtime) when is_map(runtime), do: runtime
   defp normalize_runtime(runtime) when is_list(runtime), do: Enum.into(runtime, %{})
   defp normalize_runtime(_runtime), do: %{}
+
+  defp target_kind({:navigate, _}), do: :link
+  defp target_kind({:patch, _}), do: :link
+  defp target_kind({:event, _}), do: :event
+  defp target_kind({:ash_action, _}), do: :submit
+  defp target_kind({:refresh, _}), do: :intent
+  defp target_kind({:select, _}), do: :intent
+  defp target_kind({:workflow, _}), do: :intent
+  defp target_kind({:custom, _, _}), do: :intent
+  defp target_kind(_), do: nil
+
+  defp target_to({:navigate, to}, subject), do: replace_subject_id(to, subject)
+  defp target_to({:patch, to}, subject), do: replace_subject_id(to, subject)
+  defp target_to(_target, _subject), do: nil
+
+  defp target_event({:event, event}, _intent_name), do: event
+  defp target_event(_target, intent_name), do: to_string(intent_name)
+
+  defp replace_subject_id(nil, _subject), do: nil
+  defp replace_subject_id(to, nil), do: to
+  defp replace_subject_id(to, subject), do: String.replace(to, ":id", to_string(subject.id))
+
+  defp enabled?(intent, bindings, state) do
+    case intent.enabled_when do
+      nil ->
+        true
+
+      {:selection, :any} ->
+        not Enum.empty?(Map.get(normalize_state(state), :selected, []))
+
+      {:selection, :none} ->
+        Enum.empty?(Map.get(normalize_state(state), :selected, []))
+
+      {:workflow, value} ->
+        get_in(normalize_state(state), [:workflow, :state]) == value
+
+      binding when is_atom(binding) ->
+        truthy?(Map.get(bindings, binding))
+
+      value when is_function(value, 2) ->
+        value.(bindings, state)
+
+      value when is_boolean(value) ->
+        value
+
+      _ ->
+        true
+    end
+  end
+
+  defp loading?(intent, state) do
+    case intent.loading_when do
+      nil ->
+        false
+
+      {:intent, name} ->
+        Map.get(Map.get(normalize_state(state), :loading, %{}), name, false)
+
+      {:workflow, value} ->
+        get_in(normalize_state(state), [:workflow, :state]) == value
+
+      name when is_atom(name) ->
+        Map.get(Map.get(normalize_state(state), :loading, %{}), name, false)
+
+      value when is_boolean(value) ->
+        value
+
+      _ ->
+        false
+    end
+  end
+
+  defp normalize_state(nil), do: %{}
+  defp normalize_state(%_{} = state), do: Map.from_struct(state)
+  defp normalize_state(state) when is_map(state), do: state
+  defp normalize_state(_state), do: %{}
+
+  defp truthy?(nil), do: false
+  defp truthy?(false), do: false
+  defp truthy?(value) when is_list(value), do: value != []
+  defp truthy?(value), do: value != %{}
 end

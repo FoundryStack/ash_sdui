@@ -5,6 +5,8 @@ defmodule AshSDUI.Components.StreamList do
 
   use Phoenix.Component
 
+  alias AshSDUI.Runtime.State
+
   AshSDUI.Registry.register("AshSDUI.StreamList@v1", __MODULE__, %{
     fragment: "",
     subject_types: []
@@ -28,7 +30,7 @@ defmodule AshSDUI.Components.StreamList do
     assigns =
       assigns
       |> assign(:items, assigns.items || assigns.bound_value || assigns.records || [])
-      |> assign(:refresh_meta, refresh_meta(assigns.state, assigns.binding_name))
+      |> assign(:refresh_meta, State.refresh_meta(assigns.state, assigns.binding_name))
 
     ~H"""
     <section class={["space-y-4", @class]} data-testid="stream-list">
@@ -68,13 +70,6 @@ defmodule AshSDUI.Components.StreamList do
       <% end %>
     </section>
     """
-  end
-
-  defp refresh_meta(nil, _binding_name), do: %{}
-
-  defp refresh_meta(state, binding_name) do
-    state.refresh
-    |> Map.get(binding_name, %{})
   end
 
   defp display_value(item, keys) when is_map(item) do

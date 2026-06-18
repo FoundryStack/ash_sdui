@@ -27,6 +27,7 @@ defmodule AshSDUI.Layout do
   """
 
   require Ash.Query
+  alias AshSDUI.Runtime.Meta
 
   @layout_key {__MODULE__, :layouts}
 
@@ -229,7 +230,7 @@ defmodule AshSDUI.Layout do
   end
 
   defp node_from_record(record, records) do
-    {static_props, runtime_meta} = split_runtime_meta(record.static_props || %{})
+    {static_props, runtime_meta} = Meta.split(record.static_props || %{})
 
     children =
       records
@@ -275,7 +276,7 @@ defmodule AshSDUI.Layout do
     params = %{
       name: name,
       component_name: node.component,
-      static_props: embed_runtime_meta(node),
+      static_props: Meta.embed(node),
       subject_resource: node.subject_resource,
       subject_id: node.subject_id,
       region: node.region,
@@ -329,52 +330,4 @@ defmodule AshSDUI.Layout do
     Keyword.get(opts, :node_resource) || Keyword.get(opts, :resource) || AshSDUI.UINode
   end
 
-  @runtime_meta_key "__ash_sdui__"
-
-  defp embed_runtime_meta(%Node{} = node) do
-    static_props = node.static_props || %{}
-
-    runtime_meta =
-      %{}
-      |> maybe_put_meta(:refresh, node.refresh)
-      |> maybe_put_meta(:binding, node.binding)
-      |> maybe_put_meta(:variant, node.variant)
-      |> maybe_put_meta(:state_key, node.state_key)
-
-    if runtime_meta == %{} do
-      static_props
-    else
-      Map.put(static_props, @runtime_meta_key, runtime_meta)
-    end
-  end
-
-  defp split_runtime_meta(static_props) do
-    runtime_meta =
-      Map.get(static_props, @runtime_meta_key) ||
-        Map.get(static_props, String.to_atom(@runtime_meta_key)) ||
-        %{}
-
-    {
-      Map.drop(static_props, [@runtime_meta_key, String.to_atom(@runtime_meta_key)]),
-      normalize_runtime_meta(runtime_meta)
-    }
-  end
-
-  defp normalize_runtime_meta(runtime_meta) when is_map(runtime_meta) do
-    %{
-      refresh: read_meta(runtime_meta, :refresh),
-      binding: read_meta(runtime_meta, :binding),
-      variant: read_meta(runtime_meta, :variant),
-      state_key: read_meta(runtime_meta, :state_key)
-    }
-  end
-
-  defp normalize_runtime_meta(_runtime_meta), do: %{}
-
-  defp maybe_put_meta(meta, _key, nil), do: meta
-  defp maybe_put_meta(meta, key, value), do: Map.put(meta, key, value)
-
-  defp read_meta(meta, key) do
-    Map.get(meta, key) || Map.get(meta, Atom.to_string(key))
-  end
 end

@@ -86,6 +86,9 @@ defmodule AshSDUI.LiveResource do
   alias AshSDUI.Context
   alias AshSDUI.Intent
   alias AshSDUI.Query
+  alias AshSDUI.Runtime.BindingSet
+  alias AshSDUI.Runtime.Normalize
+  alias AshSDUI.Runtime.State, as: RuntimeState
   alias AshSDUI.View
 
   def mount_resource(owner, ui, mode, opts, params, session, socket) do
@@ -251,129 +254,34 @@ defmodule AshSDUI.LiveResource do
   def handle_resource_event(_owner, _event, _params, socket), do: {:noreply, socket}
 
   def render_resource(%{ash_sdui_error: reason} = assigns) do
-    assigns = assign(assigns, :reason, inspect(reason))
-
-    ~H"""
-    <div class="alert alert-error">{@reason}</div>
-    """
+    AshSDUI.LiveResource.Render.render_error(assigns, reason)
   end
 
   def render_resource(%{__sdui_tree__: tree} = assigns) when not is_nil(tree) do
-    ~H"""
-      <AshSDUI.Components.SDUIRoot.render
-        tree={@__sdui_tree__}
-        view={@ash_sdui_view}
-        bindings={@ash_sdui_bindings}
-        state={@ash_sdui_state}
-        context={@ash_sdui_view.context}
-        domain={root_domain(@ash_sdui_resource, @ash_sdui_opts)}
-      />
-    """
+    AshSDUI.LiveResource.Render.render_tree(assigns)
   end
 
   def render_resource(%{ash_sdui_mode: mode} = assigns) when mode in [:new, :edit] do
-    assigns = assign(assigns, :content_class, recipe_class(assigns.ash_sdui_view, :content))
-
-    ~H"""
-    <div class="space-y-6">
-      <AshSDUI.Components.RecordForm.render
-        form={@form}
-        ui={@ash_sdui_ui}
-        view={@ash_sdui_view}
-        action={@ash_sdui_view.action}
-        fields={@ash_sdui_view.fields}
-        bindings={@ash_sdui_bindings}
-        state={@ash_sdui_state}
-        context={@ash_sdui_context}
-        class={@content_class}
-      >
-        <:footer>
-          <div class="flex justify-end">
-            <button type="submit" class="btn btn-primary">Save</button>
-          </div>
-        </:footer>
-      </AshSDUI.Components.RecordForm.render>
-    </div>
-    """
+    AshSDUI.LiveResource.Render.render_form(assigns)
   end
 
   def render_resource(%{ash_sdui_mode: :show} = assigns) do
-    assigns =
-      assigns
-      |> assign(:toolbar_hidden?, recipe_hidden?(assigns.ash_sdui_view, :toolbar))
-      |> assign(:toolbar_class, recipe_class(assigns.ash_sdui_view, :toolbar))
-      |> assign(:content_class, recipe_class(assigns.ash_sdui_view, :content))
-
-    ~H"""
-    <div class="space-y-6">
-      <AshSDUI.Components.IntentBar.render
-        :if={!@toolbar_hidden?}
-        ui={@ash_sdui_ui}
-        view={@ash_sdui_view}
-        subject={@subject}
-        intents={@ash_sdui_view.intents}
-        bindings={@ash_sdui_bindings}
-        state={@ash_sdui_state}
-        context={@ash_sdui_context}
-        placement={:toolbar}
-        class={@toolbar_class}
-      />
-      <AshSDUI.Components.RecordDetail.render
-        subject={@subject}
-        fields={@ash_sdui_view.fields}
-        bindings={@ash_sdui_bindings}
-        class={@content_class}
-      />
-    </div>
-    """
+    AshSDUI.LiveResource.Render.render_show(assigns)
   end
 
   def render_resource(assigns) do
-    assigns =
-      assigns
-      |> assign(:toolbar_hidden?, recipe_hidden?(assigns.ash_sdui_view, :toolbar))
-      |> assign(:toolbar_class, recipe_class(assigns.ash_sdui_view, :toolbar))
-      |> assign(:content_class, recipe_class(assigns.ash_sdui_view, :content))
-
-    ~H"""
-    <div class="space-y-6">
-      <AshSDUI.Components.IntentBar.render
-        :if={!@toolbar_hidden?}
-        ui={@ash_sdui_ui}
-        view={@ash_sdui_view}
-        intents={@ash_sdui_view.intents}
-        bindings={@ash_sdui_bindings}
-        state={@ash_sdui_state}
-        context={@ash_sdui_context}
-        placement={:toolbar}
-        class={@toolbar_class}
-      />
-      <AshSDUI.Components.RecordList.render
-        records={@records}
-        fields={@ash_sdui_view.fields}
-        intents={@ash_sdui_view.intents}
-        ui={@ash_sdui_ui}
-        view={@ash_sdui_view}
-        bindings={@ash_sdui_bindings}
-        state={@ash_sdui_state}
-        context={@ash_sdui_context}
-        empty_title={@ash_sdui_view.assigns[:empty_state] || "No records"}
-        empty_body={@ash_sdui_view.assigns[:empty_state_body]}
-        class={@content_class}
-      />
-    </div>
-    """
+    AshSDUI.LiveResource.Render.render_index(assigns)
   end
 
   def default_after_save(socket, record), do: after_save(socket, record)
 
   defp assign_data(socket, %View{mode: :index} = view, bindings, _opts, _params) do
-    records = primary_collection_value(view, bindings) || []
+    records = BindingSet.primary_collection(view, bindings) || []
     {:ok, assign(socket, :records, records)}
   end
 
   defp assign_data(socket, %View{mode: :show} = view, bindings, _opts, _params) do
-    case primary_record_value(view, bindings) do
+    case BindingSet.primary_record(view, bindings) do
       nil -> {:error, :missing_subject}
       subject -> {:ok, assign(socket, :subject, subject)}
     end
@@ -394,9 +302,9 @@ defmodule AshSDUI.LiveResource do
       |> Keyword.put(:bindings, socket.assigns[:ash_sdui_bindings] || %{})
       |> Keyword.put(:state, view.state)
       |> Keyword.put(:context, view.context)
-      |> maybe_put_layout_opt(:records, socket.assigns[:records])
-      |> maybe_put_layout_opt(:subject, socket.assigns[:subject])
-      |> maybe_put_layout_opt(:form, socket.assigns[:form])
+      |> Normalize.maybe_put_keyword(:records, socket.assigns[:records])
+      |> Normalize.maybe_put_keyword(:subject, socket.assigns[:subject])
+      |> Normalize.maybe_put_keyword(:form, socket.assigns[:form])
 
     case View.to_layout(view, layout_opts) do
       {:ok, layout} -> assign(socket, :__sdui_tree__, AshSDUI.Layout.Builder.to_tree(layout))
@@ -458,7 +366,7 @@ defmodule AshSDUI.LiveResource do
         |> assign(:ash_sdui_bindings, bindings)
         |> assign(:ash_sdui_state, view.state)
         |> assign(:ash_sdui_view, view)
-        |> assign(:records, primary_collection_value(view, bindings) || [])
+        |> assign(:records, BindingSet.primary_collection(view, bindings) || [])
 
       {:error, _reason} ->
         socket
@@ -478,7 +386,7 @@ defmodule AshSDUI.LiveResource do
     ]
 
     with {:ok, bindings} <- AshSDUI.Binding.load(view.bindings, base_opts) do
-      case primary_record_value(view, bindings) do
+      case BindingSet.primary_record(view, bindings) do
         nil ->
           {:ok, bindings}
 
@@ -489,34 +397,10 @@ defmodule AshSDUI.LiveResource do
   end
 
   defp resolve_edit_subject(view, bindings, opts, id) do
-    case primary_record_value(view, bindings) do
+    case BindingSet.primary_record(view, bindings) do
       nil -> Ash.get(view.resource, id, ash_opts(view.resource, view.context, opts))
       subject -> {:ok, subject}
     end
-  end
-
-  defp primary_collection_value(view, bindings) do
-    binding_name =
-      view.bindings
-      |> Enum.find(& &1.many?)
-      |> case do
-        nil -> nil
-        binding -> binding.name
-      end
-
-    binding_name && Map.get(bindings, binding_name)
-  end
-
-  defp primary_record_value(view, bindings) do
-    binding_name =
-      view.bindings
-      |> Enum.find(&(not &1.many?))
-      |> case do
-        nil -> nil
-        binding -> binding.name
-      end
-
-    binding_name && Map.get(bindings, binding_name)
   end
 
   defp context_from(owner, opts, params, session, socket) do
@@ -542,9 +426,9 @@ defmodule AshSDUI.LiveResource do
 
   defp ash_opts(resource, context, opts) do
     []
-    |> maybe_put(:domain, Keyword.get(opts, :domain) || resource_domain(resource))
-    |> maybe_put(:actor, context.actor)
-    |> maybe_put(:tenant, context.tenant)
+    |> Normalize.maybe_put_keyword(:domain, Keyword.get(opts, :domain) || resource_domain(resource))
+    |> Normalize.maybe_put_keyword(:actor, context.actor)
+    |> Normalize.maybe_put_keyword(:tenant, context.tenant)
   end
 
   defp resource_domain(resource) do
@@ -553,29 +437,8 @@ defmodule AshSDUI.LiveResource do
     _ -> nil
   end
 
-  defp root_domain(resource, opts) do
+  def root_domain(resource, opts) do
     Keyword.get(opts, :domain) || resource_domain(resource)
-  end
-
-  defp maybe_put(opts, _key, nil), do: opts
-  defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
-
-  defp maybe_put_layout_opt(opts, _key, nil), do: opts
-  defp maybe_put_layout_opt(opts, key, value), do: Keyword.put(opts, key, value)
-
-  defp recipe_hidden?(view, section) do
-    view.assigns
-    |> Map.get(:recipe_overrides, %{})
-    |> Map.get(section, %{})
-    |> Map.get(:skip?, false)
-  end
-
-  defp recipe_class(view, section) do
-    view.assigns
-    |> Map.get(:recipe_overrides, %{})
-    |> Map.get(section, %{})
-    |> Map.get(:props, %{})
-    |> Map.get(:class)
   end
 
   defp form_name(resource) do
@@ -656,21 +519,11 @@ defmodule AshSDUI.LiveResource do
       state.assigns
       |> Map.merge(%{
         bindings: bindings,
-        primary_collection: primary_collection_value(view, bindings),
-        primary_record: primary_record_value(view, bindings)
+        primary_collection: BindingSet.primary_collection(view, bindings),
+        primary_record: BindingSet.primary_record(view, bindings)
       })
 
-    %{view | state: %{state | assigns: state_assigns, refresh: refresh_state(bindings, state)}}
-  end
-
-  defp refresh_state(bindings, %View.State{} = state) do
-    current = state.refresh || %{}
-
-    bindings
-    |> Enum.reduce(current, fn {name, _value}, acc ->
-      Map.put_new(acc, name, %{status: :ready, refreshed_at: DateTime.utc_now()})
-    end)
-    |> Map.put_new(:last_refreshed_at, DateTime.utc_now())
+    %{view | state: %{state | assigns: state_assigns, refresh: RuntimeState.refresh_snapshot(bindings, state)}}
   end
 
   defp normalize_macro_value(value, env) do
@@ -717,17 +570,12 @@ defmodule AshSDUI.LiveResource do
 
   defp query_params(%Query{} = query) do
     %{}
-    |> maybe_put_map("search", query.search)
-    |> maybe_put_map("limit", query.limit)
-    |> maybe_put_map("offset", query.offset)
-    |> maybe_put_map("sort", sort_query_param(query.sort))
-    |> maybe_put_map("filters", stringify_keys(query.filters))
+    |> Normalize.maybe_put_map("search", query.search)
+    |> Normalize.maybe_put_map("limit", query.limit)
+    |> Normalize.maybe_put_map("offset", query.offset)
+    |> Normalize.maybe_put_map("sort", sort_query_param(query.sort))
+    |> Normalize.maybe_put_map("filters", stringify_keys(query.filters))
   end
-
-  defp maybe_put_map(map, _key, nil), do: map
-  defp maybe_put_map(map, _key, ""), do: map
-  defp maybe_put_map(map, _key, value) when value == %{}, do: map
-  defp maybe_put_map(map, key, value), do: Map.put(map, key, value)
 
   defp normalize_query_params(params) when is_map(params) do
     params
@@ -924,77 +772,26 @@ defmodule AshSDUI.LiveResource do
   defp refresh_params(_meta), do: %{}
 
   defp update_selection(socket, params) do
-    selection =
-      socket.assigns.ash_sdui_state.selected
-      |> apply_selection(params)
-
     socket
-    |> update_runtime_state(fn state -> %{state | selected: selection} end)
+    |> update_runtime_state(&RuntimeState.apply_selection(&1, params))
     |> maybe_assign_selected_records()
   end
-
-  defp apply_selection(_current, %{"operation" => "clear"}), do: []
-
-  defp apply_selection(current, %{"id" => id}) do
-    current_ids = Enum.map(current, &to_string/1)
-
-    if id in current_ids do
-      Enum.reject(current_ids, &(&1 == id))
-    else
-      current_ids ++ [id]
-    end
-  end
-
-  defp apply_selection(current, %{"operation" => operation, "id" => id}) do
-    current_ids = Enum.map(current, &to_string/1)
-
-    case operation do
-      "set" ->
-        [id]
-
-      "add" ->
-        Enum.uniq(current_ids ++ [id])
-
-      "remove" ->
-        Enum.reject(current_ids, &(&1 == id))
-
-      _ ->
-        if id in current_ids, do: Enum.reject(current_ids, &(&1 == id)), else: current_ids ++ [id]
-    end
-  end
-
-  defp apply_selection(current, _params), do: current
 
   defp maybe_assign_selected_records(
          %{assigns: %{records: records, ash_sdui_state: state}} = socket
        )
        when is_list(records) do
-    selected_ids = MapSet.new(Enum.map(state.selected || [], &to_string/1))
-    selected_records = Enum.filter(records, &(to_string(Map.get(&1, :id)) in selected_ids))
-
-    assign(socket, :selected_records, selected_records)
+    assign(socket, :selected_records, RuntimeState.selected_records(state, records))
   end
 
   defp maybe_assign_selected_records(socket), do: socket
 
   defp update_workflow(socket, params) do
-    next_workflow =
-      socket.assigns.ash_sdui_state.workflow
-      |> Map.merge(%{
-        state: Map.get(params, "state", Map.get(params, :state)) || workflow_transition(params),
-        last_event: Map.get(params, "event", Map.get(params, :event)),
-        updated_at: DateTime.utc_now()
-      })
-
-    update_runtime_state(socket, fn state -> %{state | workflow: next_workflow} end)
+    update_runtime_state(socket, &RuntimeState.apply_workflow(&1, params))
   end
 
-  defp workflow_transition(%{"event" => event}), do: event
-  defp workflow_transition(%{event: event}), do: event
-  defp workflow_transition(_params), do: nil
-
   defp update_runtime_state(socket, fun) when is_function(fun, 1) do
-    state = fun.(socket.assigns.ash_sdui_state)
+    state = RuntimeState.update(socket.assigns.ash_sdui_state, fun)
     view = %{socket.assigns.ash_sdui_view | state: state}
 
     socket
@@ -1063,7 +860,7 @@ defmodule AshSDUI.LiveResource do
         tenant: view.context.tenant,
         domain: root_domain(view.resource, opts),
         record_id: params["id"] || params[:id],
-        record: primary_record_value(view, current_bindings_for_load(view, opts, params))
+        record: BindingSet.primary_record(view, current_bindings_for_load(view, opts, params))
       ]
       |> Enum.reject(fn {_key, value} -> is_nil(value) end)
 
@@ -1087,10 +884,16 @@ defmodule AshSDUI.LiveResource do
 
     socket
     |> assign(:ash_sdui_bindings, bindings)
-    |> assign(:ash_sdui_state, mark_binding_refreshed(view.state, binding.name))
-    |> assign(:ash_sdui_view, %{view | state: mark_binding_refreshed(view.state, binding.name)})
-    |> sync_runtime_data(view, bindings)
-    |> maybe_assign_layout(%{view | state: mark_binding_refreshed(view.state, binding.name)})
+    |> then(fn socket ->
+      refreshed_state = RuntimeState.mark_binding_refreshed(view.state, binding.name)
+      refreshed_view = %{view | state: refreshed_state}
+
+      socket
+      |> assign(:ash_sdui_state, refreshed_state)
+      |> assign(:ash_sdui_view, refreshed_view)
+      |> sync_runtime_data(refreshed_view, bindings)
+      |> maybe_assign_layout(refreshed_view)
+    end)
   end
 
   defp sync_runtime_data(socket, view, bindings) do
@@ -1104,15 +907,6 @@ defmodule AshSDUI.LiveResource do
       {:ok, socket} -> socket
       {:error, _reason} -> socket
     end
-  end
-
-  defp mark_binding_refreshed(%View.State{} = state, binding_name) do
-    refresh =
-      state.refresh
-      |> Map.put(binding_name, %{status: :ready, refreshed_at: DateTime.utc_now()})
-      |> Map.put(:last_refreshed_at, DateTime.utc_now())
-
-    %{state | refresh: refresh}
   end
 
   defp subscription_specs(view, opts) do

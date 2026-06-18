@@ -7,6 +7,8 @@ defmodule AshSDUI.Query do
   sort fields.
   """
 
+  alias AshSDUI.Runtime.Normalize
+
   defstruct [
     :name,
     search_fields: [],
@@ -47,7 +49,7 @@ defmodule AshSDUI.Query do
   def from_params(_params, nil), do: nil
 
   def from_params(params, schema) do
-    params = normalize_map(params)
+    params = Normalize.mapify(params)
 
     %__MODULE__{
       name: Map.get(schema, :name),
@@ -85,7 +87,7 @@ defmodule AshSDUI.Query do
       when event in [:params, :search, :filter, :sort, :paginate] do
     merged =
       query.params
-      |> Map.merge(normalize_map(params))
+      |> Map.merge(Normalize.mapify(params))
       |> maybe_reset_offset(event)
 
     from_params(merged, query_schema(query))
@@ -98,9 +100,9 @@ defmodule AshSDUI.Query do
 
   def to_ash_opts(%__MODULE__{} = query, opts) do
     opts
-    |> maybe_put_keyword(:filter, ash_filter(query))
-    |> maybe_put_keyword(:sort, ash_sort(query))
-    |> maybe_put_keyword(:page, ash_page(query))
+    |> Normalize.maybe_put_keyword(:filter, ash_filter(query))
+    |> Normalize.maybe_put_keyword(:sort, ash_sort(query))
+    |> Normalize.maybe_put_keyword(:page, ash_page(query))
   end
 
   defp query_schema(query) do
@@ -146,14 +148,14 @@ defmodule AshSDUI.Query do
 
   defp ash_page(%__MODULE__{} = query) do
     []
-    |> maybe_put_page_opt(:limit, query.limit)
-    |> maybe_put_page_opt(:offset, query.offset)
+    |> Normalize.maybe_put_keyword(:limit, query.limit)
+    |> Normalize.maybe_put_keyword(:offset, query.offset)
   end
 
   defp normalize_filters(params, schema) do
     declared = normalize_atom_list(Map.get(schema, :filters, []))
     raw = Map.get(params, "filters") || Map.get(params, :filters) || %{}
-    raw = normalize_map(raw)
+    raw = Normalize.mapify(raw)
 
     declared
     |> Enum.reduce(%{}, fn field, acc ->
@@ -226,17 +228,6 @@ defmodule AshSDUI.Query do
     |> List.wrap()
     |> Enum.filter(&is_atom/1)
   end
-
-  defp normalize_map(nil), do: %{}
-  defp normalize_map(map) when is_map(map), do: map
-  defp normalize_map(list) when is_list(list), do: Enum.into(list, %{})
-  defp normalize_map(_value), do: %{}
-
-  defp maybe_put_keyword(opts, _key, nil), do: opts
-  defp maybe_put_keyword(opts, key, value), do: Keyword.put(opts, key, value)
-
-  defp maybe_put_page_opt(opts, _key, nil), do: opts
-  defp maybe_put_page_opt(opts, key, value), do: Keyword.put(opts, key, value)
 
   defp maybe_reset_offset(params, event) when event in [:search, :filter, :sort] do
     Map.delete(params, "offset")

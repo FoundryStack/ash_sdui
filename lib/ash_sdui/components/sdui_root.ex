@@ -2,6 +2,8 @@ defmodule AshSDUI.Components.SDUIRoot do
   @moduledoc false
   use Phoenix.Component
 
+  alias AshSDUI.Runtime.State
+
   def render(assigns) do
     tree = Map.get(assigns, :tree)
 
@@ -301,49 +303,14 @@ defmodule AshSDUI.Components.SDUIRoot do
       context: Keyword.get(resolve_opts, :context),
       binding_name: binding_name,
       bound_value: binding_name && Map.get(bindings, binding_name),
-      refresh_meta: refresh_meta(state, binding_name),
+      refresh_meta: State.refresh_meta(state, binding_name),
       state_key: state_key,
-      state_slice: state_slice(state, state_key),
+      state_slice: State.state_slice(state, state_key),
       node_refresh: Map.get(node, :refresh),
       node_variant: Map.get(node, :variant)
     }
   end
 
-  defp refresh_meta(_state, nil), do: %{}
-
-  defp refresh_meta(state, binding_name) do
-    get_in(normalize_state(state), [:refresh, binding_name]) || %{}
-  end
-
-  defp state_slice(_state, nil), do: nil
-
-  defp state_slice(state, state_key) when is_list(state_key) do
-    get_in(normalize_state(state), Enum.map(state_key, &normalize_state_key/1))
-  rescue
-    ArgumentError -> nil
-  end
-
-  defp state_slice(state, state_key) do
-    normalized_state = normalize_state(state)
-    normalized_key = normalize_state_key(state_key)
-
-    Map.get(normalized_state, normalized_key) || Map.get(normalized_state, state_key)
-  end
-
-  defp normalize_state(nil), do: %{}
-  defp normalize_state(%_{} = state), do: Map.from_struct(state)
-  defp normalize_state(state) when is_map(state), do: state
-  defp normalize_state(_state), do: %{}
-
-  defp normalize_state_key(key) when is_binary(key) do
-    try do
-      String.to_existing_atom(key)
-    rescue
-      ArgumentError -> key
-    end
-  end
-
-  defp normalize_state_key(key), do: key
 
   defp maybe_put_prop(props, _key, nil), do: props
   defp maybe_put_prop(props, key, value), do: Map.put_new(props, key, value)

@@ -15,6 +15,7 @@ defmodule AshSDUI.Components.IntentBar do
   def __ash_sdui_subject_types__, do: []
 
   alias AshSDUI.Resource.Info
+  alias AshSDUI.Intent
 
   attr(:ui, :atom, required: true)
   attr(:view, :any, default: nil)
@@ -74,16 +75,30 @@ defmodule AshSDUI.Components.IntentBar do
 
     assigns =
       assigns
-      |> assign(:kind, target_kind(assigns.intent, assigns.override))
+      |> assign(
+        :presentation,
+        Intent.presentation(assigns.intent, assigns.subject,
+          override: assigns.override,
+          bindings: assigns.bindings,
+          state: assigns.state
+        )
+      )
+      |> assign(:kind, nil)
       |> assign(:label, label)
-      |> assign(:enabled?, enabled?(assigns.intent, assigns))
-      |> assign(:loading?, loading?(assigns.intent, assigns))
+      |> assign(:enabled?, false)
+      |> assign(:loading?, false)
+      |> then(fn assigns ->
+        assigns
+        |> assign(:kind, assigns.presentation.kind)
+        |> assign(:enabled?, assigns.presentation.enabled?)
+        |> assign(:loading?, assigns.presentation.loading?)
+      end)
 
     ~H"""
     <%= case @kind do %>
       <% :link -> %>
         <a
-          href={target_to(@intent, @subject, @override)}
+          href={@presentation.to}
           class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
           aria-disabled={to_string(not @enabled?)}
         >
@@ -92,9 +107,9 @@ defmodule AshSDUI.Components.IntentBar do
       <% :event -> %>
         <button
           type="button"
-          phx-click={target_event(@intent, @override)}
+          phx-click={@presentation.event}
           phx-value-id={@override[:id] || (@subject && @subject.id)}
-          data-confirm={target_confirm(@intent, @override)}
+          data-confirm={@presentation.confirm}
           class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
           disabled={!@enabled?}
         >
@@ -114,7 +129,7 @@ defmodule AshSDUI.Components.IntentBar do
           phx-click="intent"
           phx-value-intent={@intent.name}
           phx-value-id={@override[:id] || (@subject && @subject.id)}
-          data-confirm={target_confirm(@intent, @override)}
+          data-confirm={@presentation.confirm}
           class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
           disabled={!@enabled?}
         >
@@ -124,33 +139,6 @@ defmodule AshSDUI.Components.IntentBar do
     <% end %>
     """
   end
-
-  defp target_to(intent, subject, override) do
-    target = override[:target] || Map.get(intent, :target)
-
-    case target do
-      {:navigate, to} -> to
-      {:patch, to} -> to
-      _ -> nil
-    end
-    |> replace_subject_id(subject)
-  end
-
-  defp target_event(intent, override) do
-    target = override[:target] || Map.get(intent, :target)
-
-    case target do
-      {:event, event} -> event
-      _ -> to_string(intent.name)
-    end
-  end
-
-  defp target_confirm(intent, override),
-    do: Map.get(override, :confirm, Map.get(intent, :confirm))
-
-  defp replace_subject_id(nil, _subject), do: nil
-  defp replace_subject_id(to, nil), do: to
-  defp replace_subject_id(to, subject), do: String.replace(to, ":id", to_string(subject.id))
 
   defp button_class(style, class, loading?, enabled?) do
     [
@@ -168,20 +156,6 @@ defmodule AshSDUI.Components.IntentBar do
     ]
   end
 
-  defp target_kind(intent, override) do
-    case override[:target] || Map.get(intent, :target) do
-      {:navigate, _} -> :link
-      {:patch, _} -> :link
-      {:event, _} -> :event
-      {:ash_action, _} -> :submit
-      {:refresh, _} -> :intent
-      {:select, _} -> :intent
-      {:workflow, _} -> :intent
-      {:custom, _, _} -> :intent
-      _ -> nil
-    end
-  end
-
   defp visible?(intent, %{bindings: bindings}) do
     case Map.get(intent, :visible_when) do
       nil -> true
@@ -189,59 +163,4 @@ defmodule AshSDUI.Components.IntentBar do
       _ -> true
     end
   end
-
-  defp enabled?(intent, %{bindings: bindings, state: state}) do
-    case Map.get(intent, :enabled_when) do
-      nil ->
-        true
-
-      {:selection, :any} ->
-        not Enum.empty?((state && state.selected) || [])
-
-      {:selection, :none} ->
-        Enum.empty?((state && state.selected) || [])
-
-      {:workflow, value} ->
-        get_in((state && Map.from_struct(state)) || %{}, [:workflow, :state]) == value
-
-      binding when is_atom(binding) ->
-        truthy?(Map.get(bindings, binding))
-
-      value when is_function(value, 2) ->
-        value.(bindings, state)
-
-      value when is_boolean(value) ->
-        value
-
-      _ ->
-        true
-    end
-  end
-
-  defp loading?(intent, %{state: state}) do
-    case Map.get(intent, :loading_when) do
-      nil ->
-        false
-
-      {:intent, name} ->
-        Map.get((state && state.loading) || %{}, name, false)
-
-      {:workflow, value} ->
-        get_in((state && Map.from_struct(state)) || %{}, [:workflow, :state]) == value
-
-      name when is_atom(name) ->
-        Map.get((state && state.loading) || %{}, name, false)
-
-      value when is_boolean(value) ->
-        value
-
-      _ ->
-        false
-    end
-  end
-
-  defp truthy?(nil), do: false
-  defp truthy?(false), do: false
-  defp truthy?(value) when is_list(value), do: value != []
-  defp truthy?(value), do: value != %{}
 end

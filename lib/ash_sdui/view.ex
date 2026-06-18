@@ -12,6 +12,7 @@ defmodule AshSDUI.View do
   alias AshSDUI.Layout.Builder
   alias AshSDUI.LayoutRecipe.Registry
   alias AshSDUI.Query
+  alias AshSDUI.Runtime.Normalize
   alias AshSDUI.Resource.Info
 
   defmodule Field do
@@ -126,7 +127,7 @@ defmodule AshSDUI.View do
     view_meta = Info.view(ui, mode)
     action = Keyword.get(opts, :action, view_action(view_meta, mode))
     context = Context.new(Keyword.get(opts, :context))
-    params = normalize_map(Keyword.get(opts, :params, %{}))
+    params = Normalize.mapify(Keyword.get(opts, :params, %{}))
     recipe_overrides = normalize_recipe_overrides(Keyword.get(opts, :recipe_overrides, %{}))
 
     field_overrides =
@@ -487,8 +488,4 @@ defmodule AshSDUI.View do
   defp normalize_override(override) when is_map(override), do: override
   defp normalize_override(_override), do: %{}
 
-  defp normalize_map(nil), do: %{}
-  defp normalize_map(map) when is_map(map), do: map
-  defp normalize_map(list) when is_list(list), do: Enum.into(list, %{})
-  defp normalize_map(_value), do: %{}
 end
