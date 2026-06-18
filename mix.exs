@@ -6,6 +6,7 @@ defmodule AshSdui.MixProject do
       app: :ash_sdui,
       name: "ash_sdui",
       source_url: "https://github.com/FoundryStack/ash_sdui",
+      homepage_url: "https://hexdocs.pm/ash_sdui",
       version: "0.1.0",
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -14,6 +15,7 @@ defmodule AshSdui.MixProject do
       aliases: aliases(),
       description: description(),
       package: package(),
+      docs: docs(),
     ]
   end
 
@@ -48,13 +50,37 @@ defmodule AshSdui.MixProject do
       {:phoenix_live_view, "~> 1.0"},
       {:phoenix, "~> 1.7"},
       {:jason, "~> 1.4"},
-      {:phoenix_storybook, "~> 1.2", only: :dev, optional: true}
+      {:phoenix_storybook, "~> 1.2", only: :dev, optional: true},
+      {:ex_doc, "~> 0.38", only: :dev, runtime: false}
     ]
   end
 
   defp aliases do
     [
       test: "test --no-start"
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: [
+        "README.md",
+        "docs/tutorials/build_your_first_generated_screen.md",
+        "docs/how-to/author_generated_screens.md",
+        "docs/how-to/work_with_sdui_layouts.md",
+        "docs/reference/public_api.md",
+        "docs/reference/runtime_contract.md",
+        "docs/explanation/runtime_model.md",
+        "docs/explanation/authoring_model.md",
+        "docs/explanation/demo_and_storybook.md"
+      ],
+      groups_for_extras: [
+        Tutorials: ["docs/tutorials/*.md"],
+        "How-to Guides": ["docs/how-to/*.md"],
+        Reference: ["docs/reference/*.md"],
+        Explanation: ["docs/explanation/*.md"]
+      ]
     ]
   end
 end

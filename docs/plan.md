@@ -149,8 +149,8 @@ large redesign:
 For current behavior, start with:
 
 1. `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/README.md`
-2. `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/spec.md`
-3. `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/runtime_model.md`
+2. `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/reference/runtime_contract.md`
+3. `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/explanation/runtime_model.md`
 
 Treat this roadmap and older greenfield planning language as status context, not
 as the main behavioral spec.
