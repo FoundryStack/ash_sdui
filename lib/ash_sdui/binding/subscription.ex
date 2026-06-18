@@ -34,6 +34,8 @@ defmodule AshSDUI.Binding.Subscription do
   def subscription_match?(%Binding{name: name, subscription: %{kind: :poll}}, {:ash_sdui_poll, name}),
     do: true
 
+  def subscription_match?(%Binding{subscription: %{kind: :poll}}, _message), do: false
+
   def subscription_match?(%Binding{subscription: subscription}, message) do
     event = Map.get(subscription, :event)
 

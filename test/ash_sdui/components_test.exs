@@ -136,4 +136,46 @@ defmodule AshSDUI.ComponentsTest do
     assert output =~ "Approve this item?"
     assert output =~ "loading"
   end
+
+  test "stream list renders refresh metadata and empty state safely" do
+    rendered =
+      AshSDUI.Components.StreamList.render(%{
+        title: "Feed",
+        binding_name: :collection,
+        state: %AshSDUI.View.State{
+          refresh: %{collection: %{status: :loading, refreshed_at: ~U[2026-06-19 00:00:00Z]}}
+        },
+        records: [],
+        __changed__: nil
+      })
+
+    output = html(rendered)
+
+    assert output =~ "Feed"
+    assert output =~ "Status: loading"
+    assert output =~ "Updated 00:00:00"
+    assert output =~ "No items"
+  end
+
+  test "selection bar hides for empty state and renders count for selected items" do
+    hidden =
+      AshSDUI.Components.SelectionBar.render(%{
+        state: %AshSDUI.View.State{selected: []},
+        __changed__: nil
+      })
+
+    refute html(hidden) =~ "selection-bar"
+
+    visible =
+      AshSDUI.Components.SelectionBar.render(%{
+        state: %AshSDUI.View.State{selected: ["1", "2"]},
+        label: "items selected",
+        __changed__: nil
+      })
+
+    output = html(visible)
+
+    assert output =~ "selection-bar"
+    assert output =~ ~s(<span class="font-semibold">2</span> items selected)
+  end
 end

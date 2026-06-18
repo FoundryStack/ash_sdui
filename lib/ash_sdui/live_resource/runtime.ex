@@ -322,13 +322,14 @@ defmodule AshSDUI.LiveResource.Runtime do
     case refresh(owner, ui, mode, opts, merged_params, session, socket) do
       {:ok, refreshed} ->
         refreshed
-        |> Phoenix.LiveView.put_flash(:info, refresh_message(params))
+        |> maybe_put_flash(:info, refresh_message(params))
         |> update_runtime_state(fn state ->
           %{state | refresh: Map.put(state.refresh || %{}, :last_refreshed_at, DateTime.utc_now())}
         end)
 
       {:error, _reason} ->
-        Phoenix.LiveView.put_flash(socket, :error, "Could not refresh view.")
+        socket
+        |> maybe_put_flash(:error, "Could not refresh view.")
     end
   end
 
@@ -361,6 +362,11 @@ defmodule AshSDUI.LiveResource.Runtime do
 
   defp refresh_message(%{"binding" => binding}), do: "Refreshed #{binding}."
   defp refresh_message(_params), do: "Refreshed view."
+
+  defp maybe_put_flash(%{assigns: %{flash: _}} = socket, level, message),
+    do: Phoenix.LiveView.put_flash(socket, level, message)
+
+  defp maybe_put_flash(socket, _level, _message), do: socket
 
   defp resource_domain(resource) do
     Ash.Resource.Info.domain(resource)

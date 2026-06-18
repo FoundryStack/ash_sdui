@@ -6,6 +6,9 @@ This guide covers the three layout paths in AshSDUI:
 - ephemeral runtime layouts
 - persisted named layouts backed by `UINode` records
 
+For the package overview and preferred vocabulary, start with
+[README.md](/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/README.md).
+
 ## Generated `layout: :sdui`
 
 This starts from view metadata.
@@ -53,7 +56,7 @@ AshSDUI.Layout.publish("post-index")
 Use this when a layout should survive restarts, participate in draft/publish
 workflow, or eventually be edited outside code.
 
-## Public Persistence API
+## Preferred Public API
 
 Prefer the small public API:
 

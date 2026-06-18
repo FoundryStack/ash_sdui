@@ -48,8 +48,8 @@ defmodule AshSDUI.Components.SelectionBar do
 
   defp infer_count(assigns) do
     selection =
-      get_in(assigns, [:state, :selected]) ||
-        get_in(assigns, [:state_slice, :selected]) ||
+      nested_value(assigns, :state, :selected) ||
+        nested_value(assigns, :state_slice, :selected) ||
         Map.get(assigns, :bound_value) ||
         []
 
@@ -61,5 +61,13 @@ defmodule AshSDUI.Components.SelectionBar do
     |> Map.get(:children, %{})
     |> Map.values()
     |> List.flatten()
+  end
+
+  defp nested_value(assigns, outer_key, inner_key) do
+    case Map.get(assigns, outer_key) do
+      %{^inner_key => value} -> value
+      struct when is_struct(struct) -> Map.get(struct, inner_key)
+      _ -> nil
+    end
   end
 end

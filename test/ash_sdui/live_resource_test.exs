@@ -66,10 +66,24 @@ defmodule AshSDUI.LiveResourceTest do
     end
   end
 
+  defmodule ShowLive do
+    use AshSDUI.LiveResource,
+      ui: PostUI,
+      view: :show,
+      domain: Blog
+  end
+
   defp html(rendered) do
     rendered
     |> Phoenix.HTML.Safe.to_iodata()
     |> IO.iodata_to_binary()
+  end
+
+  defp put_runtime_state(socket, state) do
+    Phoenix.Component.assign(socket,
+      ash_sdui_state: state,
+      ash_sdui_view: %{socket.assigns.ash_sdui_view | state: state}
+    )
   end
 
   setup do
@@ -202,5 +216,80 @@ defmodule AshSDUI.LiveResourceTest do
 
     assert Enum.find(merged_socket.assigns.records, &(&1.id == "feed-1")).title == "Updated seed"
     assert Enum.map(merged_socket.assigns.records, & &1.id) == ["feed-1", "feed-2"]
+  end
+
+  test "single-binding refresh preserves unrelated runtime state and hook assigns" do
+    assert {:ok, socket} = FeedLive.mount(%{}, %{}, %Phoenix.LiveView.Socket{})
+
+    selected_state = %{socket.assigns.ash_sdui_state | selected: ["feed-1"]}
+
+    selected =
+      socket
+      |> put_runtime_state(selected_state)
+      |> Phoenix.Component.assign(:custom_flag, :kept)
+
+    refreshed = AshSDUI.LiveResource.Runtime.refresh_socket(FeedLive, selected, %{"binding" => "collection"})
+
+    assert refreshed.assigns.custom_flag == :kept
+    assert refreshed.assigns.ash_sdui_state.selected == ["feed-1"]
+    assert Enum.map(refreshed.assigns.records, & &1.id) == ["feed-1"]
+  end
+
+  test "unknown binding refresh falls back to full view refresh" do
+    assert {:ok, _post} = Ash.create(Post, %{title: "Launch Post"}, action: :create, domain: Blog)
+    assert {:ok, socket} = HookedPostsLive.mount(%{}, %{}, %Phoenix.LiveView.Socket{})
+
+    refreshed =
+      AshSDUI.LiveResource.Runtime.refresh_socket(
+        HookedPostsLive,
+        socket,
+        %{"binding" => "missing", "search" => "Launch"}
+      )
+
+    assert refreshed.assigns.page_title == "Hooked Posts"
+    assert refreshed.assigns.demo_flag == true
+    assert refreshed.assigns.records |> Enum.map(& &1.title) == ["Launch Post"]
+  end
+
+  test "subscription updates keep generated record assigns synchronized for show views" do
+    assert {:ok, post} = Ash.create(Post, %{title: "Shown Post"}, action: :create, domain: Blog)
+    assert {:ok, socket} = ShowLive.mount(%{"id" => post.id}, %{}, %Phoenix.LiveView.Socket{})
+
+    binding = Enum.find(socket.assigns.ash_sdui_view.bindings, &(&1.name == :record))
+
+    updated =
+      AshSDUI.LiveResource.Runtime.update_binding_runtime(
+        socket,
+        binding,
+        %{post | title: "Updated Post"}
+      )
+
+    assert updated.assigns.subject.title == "Updated Post"
+    assert updated.assigns.records == nil
+    assert updated.assigns.ash_sdui_view.state.refresh.record.status == :ready
+  end
+
+  test "targeted live updates do not disturb selection or workflow state" do
+    assert {:ok, socket} = FeedLive.mount(%{}, %{}, %Phoenix.LiveView.Socket{})
+
+    state = %{
+      socket.assigns.ash_sdui_state
+      | selected: ["feed-1"],
+        workflow: %{state: "review"}
+    }
+
+    socket = put_runtime_state(socket, state)
+    binding = Enum.find(socket.assigns.ash_sdui_view.bindings, &(&1.name == :collection))
+
+    updated =
+      AshSDUI.LiveResource.Runtime.update_binding_runtime(
+        socket,
+        binding,
+        [%{id: "feed-1", title: "Seed item", status: "seed"}, %{id: "feed-2", title: "Next item"}]
+      )
+
+    assert updated.assigns.ash_sdui_state.selected == ["feed-1"]
+    assert updated.assigns.ash_sdui_state.workflow.state == "review"
+    assert Enum.map(updated.assigns.records, & &1.id) == ["feed-1", "feed-2"]
   end
 end

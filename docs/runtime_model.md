@@ -1,9 +1,12 @@
 # Runtime Model
 
-This guide explains the current AshSDUI runtime in practical terms.
+This guide explains the current AshSDUI runtime in implementation terms.
 
 If you are authoring generated screens, custom recipes, or layout-rendered
 components, this is the contract to build against.
+
+`README.md` is the public overview. This guide is the companion for runtime
+lifecycle, ownership boundaries, and node-scoped behavior.
 
 ## The Four Core Values
 
@@ -165,10 +168,9 @@ is reusable rather than CRUD-only:
 They should consume the runtime contract directly instead of requiring
 domain-specific glue.
 
-## What the Runtime Intentionally Does Not Promise Yet
+## Boundaries
 
-AshSDUI is further along than the old bootstrap docs suggested, but a few
-things are still intentionally modest:
+The runtime is intentionally modest in a few areas:
 
 - no formal `ui_selection` DSL
 - no formal `ui_workflow` DSL

@@ -1,24 +1,16 @@
 # Authoring Generated Views
 
-This is the preferred path when a view can stay metadata-driven.
+This guide covers the preferred authoring path when a view can stay
+metadata-driven.
 
 Start with `AshSDUI.LiveResource`, add `view`, `ui_field`, and `ui_intent`
 metadata to the UI module, and use `ash_sdui_view_opts/4` for small
 presentation customizations.
 
-The generated runtime is centered on one contract:
-
-- `view`
-- `bindings`
-- `state`
-- `context`
-
-Built-in components, custom recipes, `layout: :sdui`, and storybook demos all
-share that same shape now, so custom UI can plug in without separate adapter
-layers.
-
+For the public overview and shared runtime vocabulary, start with
+[README.md](/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/README.md).
 See [docs/runtime_model.md](/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/runtime_model.md)
-for the detailed lifecycle and node-scoped runtime contract.
+for lifecycle and node-scoped runtime details.
 
 ## The ladder
 
@@ -76,28 +68,12 @@ Use this when:
 - the built-in form/detail/collection rendering is close, but not enough
 - a custom recipe can express the page shape cleanly
 
-## Runtime state available to generated views
-
-Generated screens now share more than fields and actions.
-
-`state` can carry:
-
-- query state
-- selected IDs
-- loading flags
-- refresh metadata
-- workflow state
-- extra runtime assigns
-
-That means a generated view can gradually become more interactive without
-needing a brand-new screen architecture.
-
 ## Binding authoring
 
 Use `ui_binding` when a screen needs named data sources beyond the stock
 collection/detail assumptions.
 
-Current source families include:
+Supported source families include:
 
 - `{:resource, resource}`
 - `{:relationship, relationship}`
@@ -110,14 +86,14 @@ Current source families include:
 - `{:pubsub, topic, ...}`
 - `{:stream, source, ...}`
 
-Current refresh modes include:
+Supported refresh modes include:
 
 - `:manual`
 - `:params`
 - `:subscription`
 - `{:interval, ms}`
 
-Current update strategies include:
+Supported update strategies include:
 
 - `:replace`
 - `:append`
@@ -145,8 +121,6 @@ loading, event flow, or deeply custom component coordination, step up to a
 custom recipe or a custom LiveView.
 
 ## Intent authoring
-
-`ui_intent` is now broader than button labels and placements.
 
 Supported target families include:
 
@@ -185,3 +159,6 @@ end
 
 That path resolves the view, passes bindings into the recipe, and renders the
 tree through `AshSDUI.Components.SDUIRoot`.
+
+Storybook is meant to demonstrate the higher-level generated authoring surface
+and reusable runtime-aware building blocks, not only raw low-level components.

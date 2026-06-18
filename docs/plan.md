@@ -146,10 +146,11 @@ large redesign:
 
 ## Source of Truth
 
-For current behavior, use:
+For current behavior, start with:
 
-1. `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/spec.md`
-2. `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/runtime_model.md`
-3. `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/examples/sdui_demo/README.md`
+1. `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/README.md`
+2. `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/spec.md`
+3. `/Users/maxsvargal/Documents/Projects/foundry/packages/ash_sdui/docs/runtime_model.md`
 
-Treat older greenfield planning language as archival context only.
+Treat this roadmap and older greenfield planning language as status context, not
+as the main behavioral spec.

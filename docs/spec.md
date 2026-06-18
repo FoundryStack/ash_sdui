@@ -5,7 +5,8 @@
 
 ## Purpose
 
-This document is the current source of truth for `ash_sdui` public behavior.
+This document is the concise normative reference for `ash_sdui` public
+behavior.
 
 Earlier architecture work explored a broader "unified component graph" model as
 the primary abstraction. The package that ships today is more concrete:
@@ -17,22 +18,8 @@ the primary abstraction. The package that ships today is more concrete:
   Storybook, and custom SDUI layouts
 
 Treat older bootstrap plans and component-graph writeups as historical context.
-Use this spec when implementing or reviewing current features.
-
-## History in Brief
-
-AshSDUI evolved in four broad steps:
-
-1. Layout engine and component registry
-2. Ash-aware generated views using `view`, `ui_field`, `ui_query`,
-   `ui_binding`, and `ui_intent`
-3. Runtime contract expansion around `view`, `bindings`, `state`, and
-   `context`
-4. Live runtime additions for refresh, subscriptions, streaming collection
-   updates, selection, workflow state, and hybrid layout metadata
-
-The current library keeps all of those layers, but the runtime contract is now
-the main public model.
+Start with `README.md` for the public overview, then use this spec when
+implementing or reviewing current features.
 
 ## Canonical Runtime Contract
 
@@ -53,7 +40,7 @@ When a view is rendered through an SDUI layout tree, nodes may also declare:
 `AshSDUI.Components.SDUIRoot` is the bridge between those runtime values and
 rendered components.
 
-## View Contract
+## Public Model
 
 `AshSDUI.View` is the package's normalized, inspectable UI model.
 
@@ -80,8 +67,6 @@ Its major fields are:
 combines resource metadata, runtime params, query state, bindings, and variant
 resolvers into one struct that recipes and LiveViews can consume.
 
-## State Contract
-
 `AshSDUI.View.State` is the authoritative runtime state shape. It currently
 includes:
 
@@ -92,8 +77,6 @@ includes:
 - `refresh`
 - `workflow`
 - `assigns`
-
-### Meaning of each field
 
 - `query`: normalized query state for collection-oriented views
 - `params`: original or normalized request/event params
@@ -107,8 +90,6 @@ includes:
 
 `ui_binding` defines named data sources for a view. `AshSDUI.Binding` resolves
 those declarations into runtime bindings with normalized metadata.
-
-### Supported source families
 
 Author-facing source shapes currently supported:
 
@@ -129,8 +110,6 @@ Context aliases are also supported:
 - `{:actor}`
 - `{:tenant}`
 
-### Binding runtime metadata
-
 Runtime-resolved binding structs include:
 
 - `refresh`
@@ -142,16 +121,12 @@ Runtime-resolved binding structs include:
 
 Those are runtime fields, not extra author-facing DSL concepts.
 
-### Supported refresh semantics
-
 Current normalized refresh modes:
 
 - `:manual`
 - `:params`
 - `:subscription`
 - `{:interval, ms}`
-
-### Supported update semantics
 
 Current normalized update strategies:
 
@@ -166,8 +141,6 @@ Bindings can be planned with `AshSDUI.Binding.plan/2`, loaded with
 `AshSDUI.Binding.subscription_specs/2`, and updated with
 `AshSDUI.Binding.apply_update/3`.
 
-### Subscription transport
-
 Phoenix PubSub is the first concrete live transport used by the package, but
 the public binding model stays source-based rather than transport-specific.
 
@@ -179,8 +152,6 @@ DSL redesign.
 
 `ui_intent` defines declarative user actions. `AshSDUI.Intent` resolves those
 declarations into a normalized, inspectable model and command envelope.
-
-### Intent metadata
 
 Current intent metadata includes:
 
@@ -198,8 +169,6 @@ Current intent metadata includes:
 - `loading_when`
 - `refreshes`
 
-### Supported target families
-
 - `{:navigate, path}`
 - `{:patch, path}`
 - `{:event, event}`
@@ -209,8 +178,6 @@ Current intent metadata includes:
 - `{:workflow, event}`
 - `{:custom, module, function}`
 
-### Execution behavior
-
 `AshSDUI.Intent.command/3` returns the normalized command envelope for a
 resolved intent.
 
@@ -219,7 +186,7 @@ consumers, but the command envelope is the canonical runtime representation.
 
 `AshSDUI.LiveResource` is the default dispatcher for built-in command types.
 
-## LiveResource Responsibilities
+## Runtime Host
 
 `AshSDUI.LiveResource` is the primary generic runtime host for generated and
 semi-generated screens.
@@ -238,7 +205,7 @@ Its current responsibilities include:
 Generated collection, detail, and form screens should be treated as runtime
 specializations built on this host rather than as a separate rendering system.
 
-## Layout and Renderer Contract
+## Layout Contract
 
 Layouts remain serializable trees with a stable public authoring API.
 
@@ -251,8 +218,6 @@ Preferred authoring and lookup APIs:
 - `AshSDUI.Layout.save/3`
 - `AshSDUI.Layout.publish/2`
 - `AshSDUI.LiveScreen.assign_layout/3`
-
-### Node metadata
 
 `AshSDUI.Layout.Node` and `AshSDUI.Renderer.TreeNode` support:
 
