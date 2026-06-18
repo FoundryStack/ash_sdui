@@ -3,6 +3,8 @@ defmodule AshSDUI.LiveResource.Render do
 
   import Phoenix.Component
 
+  alias AshSDUI.Runtime.RecipeOverrides
+
   def render_error(assigns, reason) do
     assigns = assign(assigns, :reason, inspect(reason))
 
@@ -25,7 +27,8 @@ defmodule AshSDUI.LiveResource.Render do
   end
 
   def render_form(assigns) do
-    assigns = assign(assigns, :content_class, recipe_class(assigns.ash_sdui_view, :content))
+    assigns =
+      assign(assigns, :content_class, RecipeOverrides.recipe_class(assigns.ash_sdui_view, :content))
 
     ~H"""
     <div class="space-y-6">
@@ -53,9 +56,9 @@ defmodule AshSDUI.LiveResource.Render do
   def render_show(assigns) do
     assigns =
       assigns
-      |> assign(:toolbar_hidden?, recipe_hidden?(assigns.ash_sdui_view, :toolbar))
-      |> assign(:toolbar_class, recipe_class(assigns.ash_sdui_view, :toolbar))
-      |> assign(:content_class, recipe_class(assigns.ash_sdui_view, :content))
+      |> assign(:toolbar_hidden?, RecipeOverrides.recipe_hidden?(assigns.ash_sdui_view, :toolbar))
+      |> assign(:toolbar_class, RecipeOverrides.recipe_class(assigns.ash_sdui_view, :toolbar))
+      |> assign(:content_class, RecipeOverrides.recipe_class(assigns.ash_sdui_view, :content))
 
     ~H"""
     <div class="space-y-6">
@@ -84,9 +87,9 @@ defmodule AshSDUI.LiveResource.Render do
   def render_index(assigns) do
     assigns =
       assigns
-      |> assign(:toolbar_hidden?, recipe_hidden?(assigns.ash_sdui_view, :toolbar))
-      |> assign(:toolbar_class, recipe_class(assigns.ash_sdui_view, :toolbar))
-      |> assign(:content_class, recipe_class(assigns.ash_sdui_view, :content))
+      |> assign(:toolbar_hidden?, RecipeOverrides.recipe_hidden?(assigns.ash_sdui_view, :toolbar))
+      |> assign(:toolbar_class, RecipeOverrides.recipe_class(assigns.ash_sdui_view, :toolbar))
+      |> assign(:content_class, RecipeOverrides.recipe_class(assigns.ash_sdui_view, :content))
 
     ~H"""
     <div class="space-y-6">
@@ -118,18 +121,4 @@ defmodule AshSDUI.LiveResource.Render do
     """
   end
 
-  def recipe_hidden?(view, section) do
-    view.assigns
-    |> Map.get(:recipe_overrides, %{})
-    |> Map.get(section, %{})
-    |> Map.get(:skip?, false)
-  end
-
-  def recipe_class(view, section) do
-    view.assigns
-    |> Map.get(:recipe_overrides, %{})
-    |> Map.get(section, %{})
-    |> Map.get(:props, %{})
-    |> Map.get(:class)
-  end
 end

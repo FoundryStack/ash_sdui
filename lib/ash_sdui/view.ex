@@ -13,6 +13,7 @@ defmodule AshSDUI.View do
   alias AshSDUI.LayoutRecipe.Registry
   alias AshSDUI.Query
   alias AshSDUI.Runtime.Normalize
+  alias AshSDUI.Runtime.RecipeOverrides
   alias AshSDUI.Resource.Info
 
   defmodule Field do
@@ -128,17 +129,18 @@ defmodule AshSDUI.View do
     action = Keyword.get(opts, :action, view_action(view_meta, mode))
     context = Context.new(Keyword.get(opts, :context))
     params = Normalize.mapify(Keyword.get(opts, :params, %{}))
-    recipe_overrides = normalize_recipe_overrides(Keyword.get(opts, :recipe_overrides, %{}))
+    recipe_overrides =
+      RecipeOverrides.normalize_recipe_overrides(Keyword.get(opts, :recipe_overrides, %{}))
 
     field_overrides =
       recipe_overrides
       |> Map.get(:fields, %{})
-      |> merge_override_maps(Keyword.get(opts, :field_overrides, %{}))
+      |> RecipeOverrides.merge_override_maps(Keyword.get(opts, :field_overrides, %{}))
 
     intent_overrides =
       recipe_overrides
       |> Map.get(:intents, %{})
-      |> merge_override_maps(Keyword.get(opts, :intent_overrides, %{}))
+      |> RecipeOverrides.merge_override_maps(Keyword.get(opts, :intent_overrides, %{}))
 
     query_schema = resolve_query_schema(ui, view_meta, opts)
     query = Query.from_params(params, query_schema)
@@ -417,7 +419,7 @@ defmodule AshSDUI.View do
   end
 
   defp view_assigns(view_meta, recipe_overrides, assigns, query) do
-    empty_state = normalize_empty_state(Map.get(recipe_overrides, :empty_state))
+    empty_state = RecipeOverrides.normalize_empty_state(Map.get(recipe_overrides, :empty_state))
 
     %{
       title: Map.get(recipe_overrides, :title) || (view_meta && view_meta.title),
@@ -429,63 +431,4 @@ defmodule AshSDUI.View do
     }
     |> Map.merge(assigns)
   end
-
-  defp merge_override_maps(base, override) do
-    base
-    |> normalize_override_map()
-    |> Map.merge(normalize_override_map(override))
-  end
-
-  defp normalize_override_map(overrides) when is_list(overrides) do
-    overrides
-    |> Enum.into(%{})
-    |> normalize_override_map()
-  end
-
-  defp normalize_override_map(overrides) when is_map(overrides) do
-    Map.new(overrides, fn {key, override} ->
-      {key, normalize_override(override)}
-    end)
-  end
-
-  defp normalize_override_map(_overrides), do: %{}
-
-  defp normalize_recipe_overrides(overrides) when is_list(overrides) do
-    overrides
-    |> Enum.into(%{})
-    |> normalize_recipe_overrides()
-  end
-
-  defp normalize_recipe_overrides(overrides) when is_map(overrides) do
-    %{
-      fields: normalize_override_map(Map.get(overrides, :fields, %{})),
-      intents: normalize_override_map(Map.get(overrides, :intents, %{})),
-      toolbar: normalize_override(Map.get(overrides, :toolbar, %{})),
-      content: normalize_override(Map.get(overrides, :content, %{})),
-      view: normalize_override(Map.get(overrides, :view, %{})),
-      title: Map.get(overrides, :title),
-      empty_state: normalize_empty_state(Map.get(overrides, :empty_state))
-    }
-    |> Enum.reject(fn {_key, value} -> value in [nil, %{}] end)
-    |> Enum.into(%{})
-  end
-
-  defp normalize_recipe_overrides(_overrides), do: %{}
-
-  defp normalize_empty_state(nil), do: %{}
-  defp normalize_empty_state(empty_state) when is_binary(empty_state), do: %{title: empty_state}
-
-  defp normalize_empty_state(empty_state) when is_list(empty_state),
-    do: Enum.into(empty_state, %{})
-
-  defp normalize_empty_state(empty_state) when is_map(empty_state), do: empty_state
-  defp normalize_empty_state(_empty_state), do: %{}
-
-  defp normalize_override(false), do: %{skip?: true}
-  defp normalize_override(nil), do: %{}
-  defp normalize_override(true), do: %{}
-  defp normalize_override(override) when is_list(override), do: Enum.into(override, %{})
-  defp normalize_override(override) when is_map(override), do: override
-  defp normalize_override(_override), do: %{}
-
 end

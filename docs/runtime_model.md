@@ -33,6 +33,22 @@ At a high level, a generated screen works like this:
 5. the screen renders either through a stock recipe or through `SDUIRoot`
 6. refresh, select, workflow, query, and intent events update the runtime
 
+### Ownership Model
+
+The current runtime is intentionally split by responsibility:
+
+- `AshSDUI.View` resolves metadata into a screen shape
+- `AshSDUI.Binding` resolves sources, loads values, and applies live updates
+- `AshSDUI.LiveResource` hosts the runtime and delegates to focused helpers for
+  orchestration, query patching, intent dispatch, and subscriptions
+- `AshSDUI.Components.SDUIRoot` injects node-scoped runtime slices into layout
+  components
+- `AshSDUI.Runtime.*` modules hold shared low-level helpers rather than
+  user-facing DSL behavior
+
+That boundary is important: generated recipes and `layout: :sdui` now share the
+same runtime sync path even though they are authored differently.
+
 ## `view`
 
 `AshSDUI.View` is the normalized UI description for a screen.

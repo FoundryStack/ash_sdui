@@ -130,6 +130,20 @@ defmodule AshSDUI.LiveResourceTest do
     assert socket.assigns.demo_flag == true
   end
 
+  test "handle_params refresh reuses the shared runtime orchestration" do
+    assert {:ok, _post} = Ash.create(Post, %{title: "Launch Post"}, action: :create, domain: Blog)
+    assert {:ok, socket} = HookedPostsLive.mount(%{}, %{}, %Phoenix.LiveView.Socket{})
+
+    assert {:noreply, refreshed_socket} =
+             HookedPostsLive.handle_params(%{"search" => "Launch"}, "/posts?search=Launch", socket)
+
+    assert refreshed_socket.assigns.ash_sdui_view.context.audience == :staff
+    assert refreshed_socket.assigns.demo_flag == true
+    assert refreshed_socket.assigns.page_title == "Hooked Posts"
+    assert refreshed_socket.assigns.ash_sdui_uri == "/posts?search=Launch"
+    assert refreshed_socket.assigns.records |> Enum.map(& &1.title) == ["Launch Post"]
+  end
+
   test "layout :sdui renders through the generic view components with binding data" do
     assert {:ok, _post} = Ash.create(Post, %{title: "Launch Post"}, action: :create, domain: Blog)
     assert {:ok, socket} = LayoutPostsLive.mount(%{}, %{}, %Phoenix.LiveView.Socket{})

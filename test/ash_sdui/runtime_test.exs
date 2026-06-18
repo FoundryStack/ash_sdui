@@ -5,6 +5,7 @@ defmodule AshSDUI.RuntimeTest do
   alias AshSDUI.Layout.Node
   alias AshSDUI.Runtime.BindingSet
   alias AshSDUI.Runtime.Meta
+  alias AshSDUI.Binding.Source
   alias AshSDUI.Runtime.State
   alias AshSDUI.View
 
@@ -56,5 +57,16 @@ defmodule AshSDUI.RuntimeTest do
     assert State.refresh_meta(state, :metrics).status == :ready
     assert State.state_slice(state, [:workflow, :state]) == "review"
     assert State.selected_records(state, [%{id: "alpha"}, %{id: "beta"}]) == [%{id: "alpha"}]
+  end
+
+  test "binding canonical source unwraps live wrappers consistently" do
+    assert Source.canonical_source({:poll, {:resource, Article}, interval: 5_000}) ==
+             {:resource, Article}
+
+    assert Source.canonical_source({:stream, {:relationship, :items}, key: :id}) ==
+             {:relationship, :items}
+
+    assert Source.canonical_source({:pubsub, "topic", source: {:assign, :feed}}) ==
+             {:assign, :feed}
   end
 end

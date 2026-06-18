@@ -105,6 +105,39 @@ defmodule AshSDUI.Query do
     |> Normalize.maybe_put_keyword(:page, ash_page(query))
   end
 
+  @doc "Serializes a runtime query back into URL params."
+  @spec to_params(t | nil) :: map
+  def to_params(nil), do: %{}
+
+  def to_params(%__MODULE__{} = query) do
+    %{}
+    |> Normalize.maybe_put_map("search", query.search)
+    |> Normalize.maybe_put_map("limit", query.limit)
+    |> Normalize.maybe_put_map("offset", query.offset)
+    |> Normalize.maybe_put_map("sort", sort_query_param(query.sort))
+    |> Normalize.maybe_put_map("filters", stringify_keys(query.filters))
+  end
+
+  @doc "Merges query params into a path while preserving unrelated params."
+  @spec merge_path(String.t(), t | nil, map | nil) :: String.t()
+  def merge_path(path, query, current_params \\ %{})
+
+  def merge_path(path, nil, _current_params), do: path
+
+  def merge_path(path, %__MODULE__{} = query, current_params) do
+    params =
+      current_params
+      |> normalize_params()
+      |> Map.merge(to_params(query))
+      |> Enum.reject(fn {_key, value} -> blank_query_value?(value) end)
+      |> Enum.into(%{})
+
+    case URI.encode_query(params) do
+      "" -> path
+      encoded -> path <> "?" <> encoded
+    end
+  end
+
   defp query_schema(query) do
     %{
       name: query.name,
@@ -236,8 +269,57 @@ defmodule AshSDUI.Query do
 
   defp maybe_reset_offset(params, _event), do: params
 
+  defp normalize_params(params) when is_map(params) do
+    params
+    |> Map.drop([
+      "search",
+      "sort",
+      "limit",
+      "offset",
+      "filters",
+      :search,
+      :sort,
+      :limit,
+      :offset,
+      :filters
+    ])
+    |> stringify_keys()
+  end
+
+  defp normalize_params(_params), do: %{}
+
+  defp stringify_keys(map) when is_map(map) do
+    Map.new(map, fn {key, value} ->
+      {
+        if(is_atom(key), do: Atom.to_string(key), else: key),
+        if(is_map(value), do: stringify_keys(value), else: value)
+      }
+    end)
+  end
+
+  defp stringify_keys(value), do: value
+
+  defp sort_query_param([]), do: nil
+
+  defp sort_query_param(sort) do
+    Enum.map_join(sort, ",", fn
+      {field, :desc} -> "-" <> Atom.to_string(field)
+      {field, :asc} -> Atom.to_string(field)
+      field when is_atom(field) -> Atom.to_string(field)
+    end)
+  end
+
   defp blank?(nil), do: true
   defp blank?(""), do: true
   defp blank?(value) when is_binary(value), do: String.trim(value) == ""
   defp blank?(_), do: false
+
+  defp blank_query_value?(nil), do: true
+  defp blank_query_value?(""), do: true
+  defp blank_query_value?(%{}), do: true
+
+  defp blank_query_value?(value) when is_map(value),
+    do: Enum.all?(value, fn {_k, v} -> blank_query_value?(v) end)
+
+  defp blank_query_value?(_value), do: false
 end
