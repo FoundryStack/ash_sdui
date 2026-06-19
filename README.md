@@ -21,7 +21,7 @@ declarative path that stays close to your Ash resource model.
 - A shared runtime contract for generated views and SDUI layouts: `view`, `bindings`, `state`, and `context`
 - Layout authoring with `AshSDUI.Layout.Builder` plus persisted layouts through `AshSDUI.Layout`
 - Ephemeral runtime layouts through `AshSDUI.LiveScreen.assign_layout/3`
-- Metadata-driven forms and actions from `ui_field`, `ui_attribute`, and `ui_intent`
+- Metadata-driven forms and actions from `ui_field`, `ui_nested_form`, `ui_attribute`, and `ui_intent`
 - Live bindings with poll, PubSub, and stream-style update paths
 - Reusable runtime-aware components for lists, metrics, status, activity, and selection
 - Storybook and demo surfaces that exercise the generated and layout-rendered paths
@@ -118,6 +118,26 @@ When `:author_id` matches a `belongs_to` relationship source attribute such as
 `author`, the generated form now renders a select automatically and loads the
 options from the related resource's read action. For relationship arguments such
 as `:tag_ids`, use `relationship:` and let the form render a multiselect.
+
+If the form should create or edit related records inline, model that
+separately with `ui_nested_form`:
+
+```elixir
+create :create do
+  accept [:title]
+  argument :comments, {:array, :map}, allow_nil?: true
+
+  change manage_relationship(:comments, :comments, type: :direct_control)
+end
+
+sdui do
+  ui_field :title, label: "Headline", order: 1
+  ui_nested_form :comments, label: "Comments", order: 2
+end
+```
+
+That keeps relationship picking on `ui_field` and inline related-record editing
+on `ui_nested_form`.
 
 For layout authoring, prefer:
 

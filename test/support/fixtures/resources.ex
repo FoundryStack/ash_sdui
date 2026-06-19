@@ -585,7 +585,8 @@ end
 defmodule AshSDUI.TestFixtures.RelationshipAuthor do
   use Ash.Resource,
     domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
-    data_layer: Ash.DataLayer.Ets
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshSDUI.Resource]
 
   ets do
     private?(false)
@@ -610,12 +611,18 @@ defmodule AshSDUI.TestFixtures.RelationshipAuthor do
       accept([:username, :email])
     end
   end
+
+  sdui do
+    ui_field(:username, label: "Username", order: 1)
+    ui_field(:email, label: "Email", order: 2, widget: :email)
+  end
 end
 
 defmodule AshSDUI.TestFixtures.RelationshipCover do
   use Ash.Resource,
     domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
-    data_layer: Ash.DataLayer.Ets
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshSDUI.Resource]
 
   ets do
     private?(false)
@@ -647,12 +654,17 @@ defmodule AshSDUI.TestFixtures.RelationshipCover do
       accept([:title, :article_id])
     end
   end
+
+  sdui do
+    ui_field(:title, label: "Title", order: 1)
+  end
 end
 
 defmodule AshSDUI.TestFixtures.RelationshipComment do
   use Ash.Resource,
     domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
-    data_layer: Ash.DataLayer.Ets
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshSDUI.Resource]
 
   ets do
     private?(false)
@@ -684,12 +696,17 @@ defmodule AshSDUI.TestFixtures.RelationshipComment do
       accept([:body, :article_id])
     end
   end
+
+  sdui do
+    ui_field(:body, label: "Body", order: 1, widget: :textarea)
+  end
 end
 
 defmodule AshSDUI.TestFixtures.RelationshipTag do
   use Ash.Resource,
     domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
-    data_layer: Ash.DataLayer.Ets
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshSDUI.Resource]
 
   ets do
     private?(false)
@@ -713,12 +730,17 @@ defmodule AshSDUI.TestFixtures.RelationshipTag do
       accept([:name])
     end
   end
+
+  sdui do
+    ui_field(:name, label: "Name", order: 1)
+  end
 end
 
 defmodule AshSDUI.TestFixtures.RelationshipArticleTag do
   use Ash.Resource,
     domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
-    data_layer: Ash.DataLayer.Ets
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshSDUI.Resource]
 
   ets do
     private?(false)
@@ -726,6 +748,7 @@ defmodule AshSDUI.TestFixtures.RelationshipArticleTag do
 
   attributes do
     uuid_primary_key(:id)
+    attribute(:position, :integer)
   end
 
   relationships do
@@ -741,14 +764,29 @@ defmodule AshSDUI.TestFixtures.RelationshipArticleTag do
   end
 
   actions do
-    defaults([:read, :destroy, create: :*, update: :*])
+    defaults([:read, :destroy])
+
+    create :create do
+      primary?(true)
+      accept([:position])
+    end
+
+    update :update do
+      primary?(true)
+      accept([:position])
+    end
+  end
+
+  sdui do
+    ui_field(:position, label: "Position", order: 1)
   end
 end
 
 defmodule AshSDUI.TestFixtures.RelationshipArticle do
   use Ash.Resource,
     domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
-    data_layer: Ash.DataLayer.Ets
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshSDUI.Resource]
 
   ets do
     private?(false)
@@ -801,6 +839,17 @@ defmodule AshSDUI.TestFixtures.RelationshipArticle do
       change(manage_relationship(:tag_ids, :tags, type: :append_and_remove))
     end
 
+    create :create_nested do
+      primary?(false)
+      accept([:title, :author_id])
+      argument(:cover, :map)
+      argument(:comments, {:array, :map}, allow_nil?: true)
+      argument(:tags, {:array, :map}, allow_nil?: true)
+      change(manage_relationship(:cover, :cover, type: :direct_control))
+      change(manage_relationship(:comments, :comments, type: :direct_control))
+      change(manage_relationship(:tags, :tags, type: :direct_control))
+    end
+
     update :update do
       primary?(true)
       require_atomic?(false)
@@ -812,6 +861,23 @@ defmodule AshSDUI.TestFixtures.RelationshipArticle do
       change(manage_relationship(:comment_ids, :comments, type: :append_and_remove))
       change(manage_relationship(:tag_ids, :tags, type: :append_and_remove))
     end
+
+    update :update_nested do
+      primary?(false)
+      require_atomic?(false)
+      accept([:title, :author_id])
+      argument(:cover, :map)
+      argument(:comments, {:array, :map}, allow_nil?: true)
+      argument(:tags, {:array, :map}, allow_nil?: true)
+      change(manage_relationship(:cover, :cover, type: :direct_control))
+      change(manage_relationship(:comments, :comments, type: :direct_control))
+      change(manage_relationship(:tags, :tags, type: :direct_control))
+    end
+  end
+
+  sdui do
+    ui_field(:title, label: "Title", order: 1)
+    ui_field(:author_id, label: "Author", order: 2)
   end
 end
 
@@ -836,5 +902,23 @@ defmodule AshSDUI.TestFixtures.RelationshipArticleUI do
     )
 
     ui_field(:tag_ids, label: "Tags", order: 5, relationship: :tags, option_label: :name)
+  end
+end
+
+defmodule AshSDUI.TestFixtures.RelationshipArticleNestedUI do
+  use AshSDUI.Resource.Standalone
+
+  sdui do
+    for_resource(AshSDUI.TestFixtures.RelationshipArticle)
+
+    view(:new, recipe: :form, action: :create_nested)
+    view(:edit, recipe: :form, action: :update_nested)
+
+    ui_field(:title, label: "Title", order: 1)
+    ui_field(:author_id, label: "Author", order: 2)
+
+    ui_nested_form(:cover, label: "Cover", order: 3)
+    ui_nested_form(:comments, label: "Comments", order: 4)
+    ui_nested_form(:tags, label: "Tags", order: 5)
   end
 end

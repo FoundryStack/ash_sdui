@@ -6,6 +6,7 @@ defmodule AshSDUI.ResourceExtensionTest do
   alias AshSDUI.TestFixtures.ResourceExtension.ActionDefaults
   alias AshSDUI.TestFixtures.ResourceExtension.AttrDefaults
   alias AshSDUI.TestFixtures.ResourceExtension.AttrLabelKey
+  alias AshSDUI.TestFixtures.RelationshipArticleNestedUI
   alias AshSDUI.TestFixtures.RelationshipArticleUI
   alias AshSDUI.TestFixtures.ResourceExtension.AttrWidget
   alias AshSDUI.TestFixtures.ResourceExtension.Basic
@@ -81,6 +82,14 @@ defmodule AshSDUI.ResourceExtensionTest do
       assert author.widget == nil
       assert cover.relationship == :cover
       assert cover.option_label == :title
+    end
+
+    test "ui_nested_form accepts nested relationship metadata" do
+      comments = Info.ui_nested_form(RelationshipArticleNestedUI, :comments)
+
+      assert comments.relationship == :comments
+      assert comments.label == "Comments"
+      assert comments.order == 4
     end
 
     # Note: Verifier test skipped - defmodule suppresses verification errors in tests

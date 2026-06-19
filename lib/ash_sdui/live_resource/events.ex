@@ -15,6 +15,27 @@ defmodule AshSDUI.LiveResource.Events do
     {:noreply, Phoenix.Component.assign(socket, :form, Phoenix.Component.to_form(form))}
   end
 
+  def handle(_owner, "nested_add_form", %{"path" => path}, socket) do
+    form = ash_phoenix_form!().add_form(socket.assigns.form.source, path)
+    {:noreply, Phoenix.Component.assign(socket, :form, Phoenix.Component.to_form(form))}
+  end
+
+  def handle(_owner, "nested_remove_form", %{"path" => path}, socket) do
+    form = ash_phoenix_form!().remove_form(socket.assigns.form.source, path)
+    {:noreply, Phoenix.Component.assign(socket, :form, Phoenix.Component.to_form(form))}
+  end
+
+  def handle(_owner, "nested_sort_form", %{"path" => path, "direction" => direction}, socket) do
+    instruction =
+      case direction do
+        "decrement" -> :decrement
+        _ -> :increment
+      end
+
+    form = ash_phoenix_form!().sort_forms(socket.assigns.form.source, path, instruction)
+    {:noreply, Phoenix.Component.assign(socket, :form, Phoenix.Component.to_form(form))}
+  end
+
   def handle(_owner, "query", params, %{assigns: %{ash_sdui_view: view}} = socket) do
     {:noreply, QueryPatch.patch_query(socket, Query.update(view.state.query, :params, params))}
   end
@@ -32,7 +53,9 @@ defmodule AshSDUI.LiveResource.Events do
 
   def handle(_owner, "paginate", %{"offset" => offset}, socket) do
     query = socket.assigns.ash_sdui_view.state.query
-    {:noreply, QueryPatch.patch_query(socket, Query.update(query, :paginate, %{"offset" => offset}))}
+
+    {:noreply,
+     QueryPatch.patch_query(socket, Query.update(query, :paginate, %{"offset" => offset}))}
   end
 
   def handle(_owner, "reset_query", _params, socket) do
@@ -80,7 +103,11 @@ defmodule AshSDUI.LiveResource.Events do
     view = socket.assigns.ash_sdui_view
 
     with {:ok, record} <-
-           Ash.get(resource, id, Runtime.ash_opts(resource, view.context, socket.assigns.ash_sdui_opts)),
+           Ash.get(
+             resource,
+             id,
+             Runtime.ash_opts(resource, view.context, socket.assigns.ash_sdui_opts)
+           ),
          :ok <- Ash.destroy(record) do
       {:noreply, socket |> put_flash(:info, "Deleted.") |> reload_index()}
     else
@@ -90,7 +117,9 @@ defmodule AshSDUI.LiveResource.Events do
 
   def handle(_owner, _event, _params, socket), do: {:noreply, socket}
 
-  defp reload_index(%{assigns: %{ash_sdui_mode: :index, ash_sdui_view: view, ash_sdui_opts: opts}} = socket) do
+  defp reload_index(
+         %{assigns: %{ash_sdui_mode: :index, ash_sdui_view: view, ash_sdui_opts: opts}} = socket
+       ) do
     params = socket.assigns[:ash_sdui_params] || %{}
 
     case Runtime.load_bindings(view, opts, params) do

@@ -28,7 +28,11 @@ defmodule AshSDUI.LiveResource.Render do
 
   def render_form(assigns) do
     assigns =
-      assign(assigns, :content_class, RecipeOverrides.recipe_class(assigns.ash_sdui_view, :content))
+      assign(
+        assigns,
+        :content_class,
+        RecipeOverrides.recipe_class(assigns.ash_sdui_view, :content)
+      )
 
     ~H"""
     <div class="space-y-6">
@@ -38,6 +42,7 @@ defmodule AshSDUI.LiveResource.Render do
         view={@ash_sdui_view}
         action={@ash_sdui_view.action}
         fields={@ash_sdui_view.fields}
+        nested_forms={@ash_sdui_view.nested_forms}
         bindings={@ash_sdui_bindings}
         state={@ash_sdui_state}
         context={@ash_sdui_context}
@@ -120,5 +125,4 @@ defmodule AshSDUI.LiveResource.Render do
     </div>
     """
   end
-
 end

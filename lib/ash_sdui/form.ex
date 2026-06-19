@@ -3,6 +3,7 @@ defmodule AshSDUI.Form do
   Introspection helpers for building forms from SDUI metadata and Ash actions.
   """
 
+  alias Ash.Changeset.ManagedRelationshipHelpers
   alias AshSDUI.Resource.Info
 
   @default_option_labels [:name, :title, :label, :username, :email]
@@ -62,6 +63,13 @@ defmodule AshSDUI.Form do
     end)
   end
 
+  def nested_forms(resource_or_ui, action_name) do
+    resource = Info.for_resource(resource_or_ui)
+    action = Ash.Resource.Info.action(resource, action_name)
+
+    resolve_nested_forms(resource_or_ui, resource, action, MapSet.new())
+  end
+
   defp infer_widget(%{type: Ash.Type.Atom}), do: :text_input
   defp infer_widget(%{type: Ash.Type.String}), do: :text_input
   defp infer_widget(%{type: :string}), do: :text_input
@@ -99,6 +107,8 @@ defmodule AshSDUI.Form do
       option_value: relationship[:option_value],
       prompt: relationship[:prompt],
       read_action: relationship[:read_action],
+      option_filter: field.option_filter,
+      option_sort: field.option_sort,
       options: [],
       multiple?: relationship[:multiple?] || false
     }
@@ -123,6 +133,8 @@ defmodule AshSDUI.Form do
           option_value: nil,
           prompt: nil,
           read_action: nil,
+          option_filter: nil,
+          option_sort: nil,
           multiple?: false,
           widget: field.widget
         }
@@ -151,7 +163,13 @@ defmodule AshSDUI.Form do
     label_field = field.option_label || default_option_label(destination)
     value_field = field.option_value || relationship_value_field!(field, relationship)
 
-    destination
+    query =
+      destination
+      |> Ash.Query.new()
+      |> maybe_filter_options(field.option_filter)
+      |> maybe_sort_options(field.option_sort)
+
+    query
     |> Ash.read(
       action: read_action,
       actor: opts[:actor],
@@ -188,6 +206,153 @@ defmodule AshSDUI.Form do
         Map.put_new(acc, Atom.to_string(field.name), [])
       else
         acc
+      end
+    end)
+  end
+
+  defp resolve_nested_forms(_resource_or_ui, resource, nil, _seen) when not is_nil(resource),
+    do: []
+
+  defp resolve_nested_forms(resource_or_ui, resource, action, seen) do
+    managed_relationships = managed_relationship_specs(action)
+
+    resource_or_ui
+    |> Info.ui_nested_forms()
+    |> Enum.sort_by(& &1.order)
+    |> Enum.flat_map(fn nested_form ->
+      case Map.get(managed_relationships, nested_form.relationship) do
+        nil ->
+          []
+
+        managed ->
+          case build_nested_form(resource_or_ui, resource, nested_form, managed, seen) do
+            nil -> []
+            built -> [built]
+          end
+      end
+    end)
+  end
+
+  defp build_nested_form(resource_or_ui, resource, nested_form, managed, seen) do
+    relationship = relationship!(resource, nested_form.relationship)
+
+    sanitized_opts =
+      ManagedRelationshipHelpers.sanitize_opts(relationship, normalize_manage_opts(managed.opts))
+
+    interaction_mode =
+      nested_form.interaction_mode || infer_interaction_mode(relationship, managed)
+
+    style = nested_form.style || default_nested_style(relationship)
+    create_action = destination_action(sanitized_opts, relationship, :create)
+    update_action = destination_action(sanitized_opts, relationship, :update)
+    lookup_read_action = lookup_read_action(sanitized_opts, relationship)
+    lookup_update_action = lookup_update_action(sanitized_opts, relationship)
+    join_action = join_action(sanitized_opts, relationship)
+
+    fields =
+      resolve_nested_fields(
+        relationship.destination,
+        Enum.uniq(Enum.reject([create_action, update_action, lookup_update_action], &is_nil/1))
+      )
+
+    child_seen =
+      MapSet.put(seen, {resource, action_name(managed.action), nested_form.relationship})
+
+    children =
+      if MapSet.member?(
+           child_seen,
+           {relationship.destination, update_action || create_action, :__self__}
+         ) do
+        maybe_join_nested_form(relationship, nested_form, interaction_mode, join_action)
+      else
+        nested_children =
+          resolve_nested_forms(
+            relationship.destination,
+            relationship.destination,
+            nested_action(
+              relationship.destination,
+              preferred_nested_action(create_action, update_action, lookup_update_action)
+            ),
+            MapSet.put(
+              child_seen,
+              {relationship.destination, update_action || create_action, :__self__}
+            )
+          )
+
+        maybe_join_nested_form(relationship, nested_form, interaction_mode, join_action) ++
+          nested_children
+      end
+
+    if interaction_mode == :pick_existing and fields == [] and children == [] do
+      nil
+    else
+      %{
+        name: nested_form.relationship,
+        label: Info.resolve_label(nested_form, resource_or_ui),
+        relationship: nested_form.relationship,
+        relationship_type: relationship.type,
+        resource: relationship.destination,
+        style: style,
+        allow_add?: allow_add?(nested_form, style, interaction_mode),
+        allow_remove?: allow_remove?(nested_form, interaction_mode),
+        allow_sort?: allow_sort?(nested_form, style),
+        collapsed_by_default?: nested_form.collapsed_by_default?,
+        interaction_mode: interaction_mode,
+        argument: managed.argument && managed.argument.name,
+        create_action: create_action,
+        update_action: update_action,
+        lookup_read_action: lookup_read_action,
+        lookup_update_action: lookup_update_action,
+        join_action: join_action,
+        fields: fields,
+        nested_forms: children
+      }
+    end
+  end
+
+  defp maybe_join_nested_form(
+         %{type: :many_to_many, through: through},
+         nested_form,
+         interaction_mode,
+         join_action
+       )
+       when interaction_mode == :many_to_many_with_join and not is_nil(join_action) do
+    [
+      %{
+        name: :_join,
+        label: "#{Info.resolve_label(nested_form, through)} Link",
+        relationship: :_join,
+        relationship_type: :join,
+        resource: through,
+        style: :single,
+        allow_add?: false,
+        allow_remove?: false,
+        allow_sort?: false,
+        collapsed_by_default?: false,
+        interaction_mode: :update_inline,
+        argument: nil,
+        create_action: join_action,
+        update_action: join_action,
+        lookup_read_action: nil,
+        lookup_update_action: nil,
+        join_action: nil,
+        fields: resolve_nested_fields(through, [join_action]),
+        nested_forms: []
+      }
+    ]
+  end
+
+  defp maybe_join_nested_form(_relationship, _nested_form, _interaction_mode, _join_action),
+    do: []
+
+  defp resolve_nested_fields(resource_or_ui, action_names) do
+    action_names
+    |> Enum.flat_map(&fields(resource_or_ui, &1))
+    |> Enum.reduce([], fn field, acc ->
+      if Enum.any?(acc, &(&1.name == field.name)) do
+        acc
+      else
+        acc ++ [field]
       end
     end)
   end
@@ -252,6 +417,42 @@ defmodule AshSDUI.Form do
     end)
   end
 
+  defp managed_relationship_specs(nil), do: %{}
+
+  defp managed_relationship_specs(%{changes: changes, type: type} = action) do
+    Enum.reduce(changes || [], %{}, fn
+      %{change: {Ash.Resource.Change.ManageRelationship, change_opts}}, acc ->
+        relationship_name = change_opts[:relationship]
+        argument_name = change_opts[:argument]
+        manage_opts = change_opts[:opts] || []
+        argument = action_argument(action, argument_name)
+
+        Map.put(acc, relationship_name, %{
+          relationship: relationship_name,
+          argument: argument,
+          opts: manage_opts,
+          action: action,
+          action_type: type
+        })
+
+      _other, acc ->
+        acc
+    end)
+  end
+
+  defp managed_relationship_specs(changes) when is_list(changes) do
+    Enum.reduce(changes, %{}, fn
+      %{change: {Ash.Resource.Change.ManageRelationship, change_opts}}, acc ->
+        Map.put(acc, change_opts[:relationship], %{
+          relationship: change_opts[:relationship],
+          opts: change_opts[:opts] || []
+        })
+
+      _other, acc ->
+        acc
+    end)
+  end
+
   defp input_source(field, accepted) do
     if MapSet.member?(accepted, field.name), do: :attribute, else: :argument
   end
@@ -303,6 +504,12 @@ defmodule AshSDUI.Form do
     |> Map.get(:name)
   end
 
+  defp maybe_filter_options(query, nil), do: query
+  defp maybe_filter_options(query, filter), do: Ash.Query.filter_input(query, filter)
+
+  defp maybe_sort_options(query, nil), do: query
+  defp maybe_sort_options(query, sort), do: Ash.Query.sort(query, sort)
+
   defp default_prompt(field, resource_or_ui) do
     "Choose #{String.downcase(Info.resolve_label(field, resource_or_ui))}"
   end
@@ -314,6 +521,132 @@ defmodule AshSDUI.Form do
 
   defp multiple_relationship?(%{type: type}) when type in [:has_many, :many_to_many], do: true
   defp multiple_relationship?(_relationship), do: false
+
+  defp infer_interaction_mode(relationship, managed) do
+    argument_type = managed.argument && managed.argument.type
+
+    sanitized_opts =
+      ManagedRelationshipHelpers.sanitize_opts(relationship, normalize_manage_opts(managed.opts))
+
+    cond do
+      relationship.type == :many_to_many &&
+          (ManagedRelationshipHelpers.on_match_destination_actions(sanitized_opts, relationship) ||
+             [])
+          |> Enum.any?(&match?({:join, _, _}, &1)) ->
+        :many_to_many_with_join
+
+      sanitized_opts[:on_lookup] |> unwrap_interaction() == :relate_and_update ->
+        :relate_and_update
+
+      map_argument?(argument_type) && ManagedRelationshipHelpers.could_create?(sanitized_opts) &&
+          ManagedRelationshipHelpers.could_update?(sanitized_opts) ->
+        :create_or_update_inline
+
+      map_argument?(argument_type) && ManagedRelationshipHelpers.could_update?(sanitized_opts) ->
+        :update_inline
+
+      map_argument?(argument_type) && ManagedRelationshipHelpers.could_create?(sanitized_opts) ->
+        :create_inline
+
+      true ->
+        :pick_existing
+    end
+  end
+
+  defp unwrap_interaction({value, _rest, _more, _keys}), do: value
+  defp unwrap_interaction({value, _rest, _more}), do: value
+  defp unwrap_interaction(value), do: value
+
+  defp default_nested_style(%{type: type}) when type in [:has_many, :many_to_many], do: :list
+  defp default_nested_style(_relationship), do: :single
+
+  defp allow_add?(nested_form, style, interaction_mode)
+  defp allow_add?(%{allow_add?: value}, _style, _mode) when is_boolean(value), do: value
+
+  defp allow_add?(_nested_form, :list, mode),
+    do: mode in [:create_inline, :create_or_update_inline, :many_to_many_with_join]
+
+  defp allow_add?(_nested_form, :single, mode),
+    do: mode in [:create_inline, :create_or_update_inline, :many_to_many_with_join]
+
+  defp allow_remove?(nested_form, interaction_mode)
+  defp allow_remove?(%{allow_remove?: value}, _mode) when is_boolean(value), do: value
+  defp allow_remove?(_nested_form, mode), do: mode != :pick_existing
+
+  defp allow_sort?(nested_form, style)
+  defp allow_sort?(%{allow_sort?: value}, _style) when is_boolean(value), do: value
+  defp allow_sort?(_nested_form, :list), do: true
+  defp allow_sort?(_nested_form, _style), do: false
+
+  defp destination_action(opts, relationship, kind) do
+    extractor =
+      case kind do
+        :create -> &ManagedRelationshipHelpers.on_no_match_destination_actions/2
+        :update -> &ManagedRelationshipHelpers.on_match_destination_actions/2
+      end
+
+    opts
+    |> extractor.(relationship)
+    |> List.wrap()
+    |> Enum.find_value(fn
+      {:destination, action} -> action
+      _other -> nil
+    end)
+  end
+
+  defp join_action(opts, relationship) do
+    opts
+    |> ManagedRelationshipHelpers.on_match_destination_actions(relationship)
+    |> List.wrap()
+    |> Enum.find_value(fn
+      {:join, action, _keys} -> action
+      _other -> nil
+    end) ||
+      opts
+      |> ManagedRelationshipHelpers.on_no_match_destination_actions(relationship)
+      |> List.wrap()
+      |> Enum.find_value(fn
+        {:join, action, _keys} -> action
+        _other -> nil
+      end)
+  end
+
+  defp lookup_read_action(opts, relationship) do
+    case ManagedRelationshipHelpers.on_lookup_read_action(opts, relationship) do
+      {:destination, action} -> action
+      _ -> nil
+    end
+  end
+
+  defp lookup_update_action(opts, relationship) do
+    case ManagedRelationshipHelpers.on_lookup_update_action(opts, relationship) do
+      {:destination, action} -> action
+      _ -> nil
+    end
+  end
+
+  defp preferred_nested_action(create_action, update_action, lookup_update_action) do
+    update_action || create_action || lookup_update_action
+  end
+
+  defp nested_action(_resource, nil), do: nil
+  defp nested_action(resource, action_name), do: Ash.Resource.Info.action(resource, action_name)
+
+  defp normalize_manage_opts(opts) do
+    case opts[:type] do
+      nil -> opts
+      type -> Keyword.merge(Ash.Changeset.manage_relationship_opts(type), opts)
+    end
+  end
+
+  defp map_argument?({:array, :map}), do: true
+  defp map_argument?({:array, Ash.Type.Map}), do: true
+  defp map_argument?(:map), do: true
+  defp map_argument?(Ash.Type.Map), do: true
+  defp map_argument?(_), do: false
+
+  defp action_name(nil), do: nil
+  defp action_name(%{name: name}), do: name
 
   defp option_label(record, label_field, destination) do
     case Map.get(record, label_field) do

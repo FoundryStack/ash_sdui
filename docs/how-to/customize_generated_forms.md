@@ -109,6 +109,87 @@ ui_field :assignee_id,
 This keeps the generated form path while changing how options are loaded and
 presented.
 
+## Filter or sort generated selector options
+
+Use selector metadata when the related list should load through a narrower or
+ordered query.
+
+```elixir
+ui_field :reviewer_id,
+  label: "Reviewer",
+  relationship: :reviewer,
+  option_label: :full_name,
+  option_filter: %{active: true},
+  option_sort: [:full_name]
+```
+
+This keeps the generated selector on the Ash query path while changing which
+records appear and in what order.
+
+## Render nested relationship forms inline
+
+Use `ui_nested_form` when the form should create or edit related records inline
+instead of only selecting existing ones.
+
+```elixir
+update :update do
+  accept [:title]
+  argument :cover, :map
+  argument :comments, {:array, :map}, allow_nil?: true
+
+  change manage_relationship(:cover, :cover, type: :direct_control)
+  change manage_relationship(:comments, :comments, type: :direct_control)
+end
+
+sdui do
+  ui_field :title, label: "Title"
+  ui_nested_form :cover, label: "Cover"
+  ui_nested_form :comments, label: "Comments"
+end
+```
+
+`ui_nested_form` is the preferred path for:
+
+- `has_one` child forms such as a profile or cover
+- `has_many` child forms such as comments or addresses
+- `many_to_many` child forms when the action manages destination records inline
+
+Keep existing-record picking on `ui_field`. Use `ui_nested_form` only when the
+input payload is nested maps instead of scalar IDs.
+
+## Let Ash infer nested create and update flows
+
+When the action uses `manage_relationship`, generated nested forms follow
+AshPhoenix auto-inference instead of a separate form schema.
+
+```elixir
+change manage_relationship(:comments, :comments, type: :direct_control)
+```
+
+With that shape, generated nested forms can:
+
+- preload existing related rows on edit screens
+- add new rows inline
+- remove rows inline
+- reorder list relationships
+
+Keep the child resource metadata authoritative so generated nested rows know
+which fields to render.
+
+## Render many-to-many join details inline
+
+When a `many_to_many` action manages join attributes, generated nested forms
+render the destination row and the `_join` subform together.
+
+```elixir
+sdui do
+  ui_nested_form :tags, label: "Tags"
+end
+```
+
+If the join resource exposes `ui_field` metadata such as `:position`, the
+generated nested form renders those fields under each related record row.
+
 ## Hide fields without changing the action contract
 
 Use `hidden: true` or `form?: false` when an action accepts a field that should

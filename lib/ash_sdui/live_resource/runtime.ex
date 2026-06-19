@@ -310,6 +310,7 @@ defmodule AshSDUI.LiveResource.Runtime do
         ash_opts(view.resource, view.context, opts) ++
           [
             as: form_name(view.resource),
+            forms: generated_nested_forms_opts(view),
             prepare_params: &AshSDUI.Form.prepare_params(&1, view.fields)
           ]
       )
@@ -330,6 +331,7 @@ defmodule AshSDUI.LiveResource.Runtime do
           ash_opts(view.resource, view.context, opts) ++
             [
               as: form_name(view.resource),
+              forms: generated_nested_forms_opts(view),
               params: params,
               prepare_params: &AshSDUI.Form.prepare_params(&1, view.fields)
             ]
@@ -372,9 +374,10 @@ defmodule AshSDUI.LiveResource.Runtime do
 
   defp load_relationship_values(subject, view, opts) do
     loads =
-      view.fields
-      |> Enum.filter(&(&1.input_source == :argument && &1.relationship))
-      |> Enum.map(& &1.relationship)
+      ((view.fields
+        |> Enum.filter(&(&1.input_source == :argument && &1.relationship))
+        |> Enum.map(& &1.relationship)) ++
+         nested_relationship_loads(view.nested_forms))
       |> Enum.uniq()
 
     case loads do
@@ -460,5 +463,15 @@ defmodule AshSDUI.LiveResource.Runtime do
     else
       raise "AshSDUI.LiveResource form views require ash_phoenix"
     end
+  end
+
+  defp generated_nested_forms_opts(%View{nested_forms: []}), do: [auto?: false]
+  defp generated_nested_forms_opts(%View{}), do: [auto?: true]
+
+  defp nested_relationship_loads(nested_forms) do
+    Enum.flat_map(nested_forms || [], fn nested_form ->
+      [nested_form.relationship | nested_relationship_loads(nested_form.nested_forms)]
+    end)
+    |> Enum.reject(&(&1 in [nil, :_join]))
   end
 end

@@ -18,6 +18,7 @@ defmodule AshSDUI.Components.RecordForm do
   attr(:ui, :atom, required: true)
   attr(:action, :atom, required: true)
   attr(:fields, :list, default: nil)
+  attr(:nested_forms, :list, default: [])
   attr(:view, :any, default: nil)
   attr(:bindings, :map, default: %{})
   attr(:state, :any, default: nil)
@@ -50,6 +51,8 @@ defmodule AshSDUI.Components.RecordForm do
         </fieldset>
       <% end %>
 
+      <AshSDUI.Components.NestedForm.render :for={nested_form <- @nested_forms} form={@form} nested_form={nested_form} />
+
       <%= for field <- @extra_fields do %>
         {render_slot(field)}
       <% end %>
@@ -61,7 +64,7 @@ defmodule AshSDUI.Components.RecordForm do
     """
   end
 
-  defp translate_error({msg, opts}) do
+  def translate_error({msg, opts}) do
     Enum.reduce(opts, msg, fn {key, value}, acc ->
       String.replace(acc, "%{#{key}}", to_string(value))
     end)

@@ -62,6 +62,19 @@ defmodule AshSDUI.Resource.Info do
     |> Enum.find(&(&1.name == name))
   end
 
+  @doc "Reads all `ui_nested_form` entities from the sdui block, or []."
+  def ui_nested_forms(resource) do
+    (Spark.Dsl.Extension.get_entities(resource, [:sdui]) || [])
+    |> Enum.filter(&is_struct(&1, AshSDUI.Resource.UiNestedForm))
+  end
+
+  @doc "Reads a named `ui_nested_form` entity from the sdui block."
+  def ui_nested_form(resource, relationship) do
+    resource
+    |> ui_nested_forms()
+    |> Enum.find(&(&1.relationship == relationship))
+  end
+
   @doc "Reads all `ui_binding` entities from the sdui block, or []."
   def ui_bindings(resource) do
     (Spark.Dsl.Extension.get_entities(resource, [:sdui]) || [])

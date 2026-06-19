@@ -7,7 +7,7 @@ This document lists the public package surface for `ash_sdui`.
 Prefer these layers in order:
 
 1. `AshSDUI.LiveResource`
-2. `view/2`, `ui_field/2`, `ui_intent/2`, `ui_query/2`, and `ui_binding/2`
+2. `view/2`, `ui_field/2`, `ui_nested_form/2`, `ui_intent/2`, `ui_query/2`, and `ui_binding/2`
 3. `ash_sdui_view_opts/4`
 4. `recipe_overrides`
 5. custom recipe modules
@@ -23,6 +23,7 @@ Prefer these APIs:
 - `AshSDUI.Layout.publish/2`
 - `AshSDUI.LiveScreen.assign_layout/3`
 - `AshSDUI.Form.fields/2`
+- `AshSDUI.Form.nested_forms/2`
 
 Compatibility-only path:
 
@@ -40,6 +41,7 @@ Compatibility-only path:
 | `AshSDUI.Layout.Builder` | Preferred builder for layout authoring |
 | `AshSDUI.LiveScreen` | Helper for assigning ephemeral runtime layouts |
 | `AshSDUI.Form` | Metadata-driven form field introspection |
+| `AshSDUI.Components.NestedForm` | Recursive renderer for generated nested relationship forms |
 | `AshSDUI.Components.SDUIRoot` | Runtime bridge for layout-rendered components |
 | `AshSDUI.Storybook` | Storybook integration for generated views and SDUI trees |
 
@@ -76,6 +78,7 @@ Compatibility-only path:
 | Function | Purpose |
 | --- | --- |
 | `fields/2` | Return ordered generated-form field metadata for an action |
+| `nested_forms/2` | Return ordered generated nested-form metadata for an action |
 
 ## Metadata sources
 
@@ -83,6 +86,7 @@ Use resource metadata as the source of truth:
 
 - `view/2`
 - `ui_field/2`
+- `ui_nested_form/2`
 - `ui_intent/2`
 - `ui_query/2`
 - `ui_binding/2`
@@ -90,7 +94,19 @@ Use resource metadata as the source of truth:
 Generated forms should use `widget:` when a field should render `:textarea`,
 `:email`, `:select`, `:multiselect`, or another non-default input. Relationship
 selectors may also declare `relationship:`, `option_label:`, `option_value:`,
-`prompt:`, and `read_action:`.
+`prompt:`, `read_action:`, `option_filter:`, and `option_sort:`.
+
+Generated nested relationship forms should use `ui_nested_form/2`. Supported
+metadata includes:
+
+- `relationship`
+- `label` / `label_key`
+- `style`
+- `allow_add?`
+- `allow_remove?`
+- `allow_sort?`
+- `collapsed_by_default?`
+- `interaction_mode`
 
 ## Binding source families
 

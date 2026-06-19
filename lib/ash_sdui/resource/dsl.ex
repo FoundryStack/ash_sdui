@@ -83,6 +83,8 @@ defmodule AshSDUI.Resource.UiField do
     :option_value,
     :prompt,
     :read_action,
+    :option_filter,
+    :option_sort,
     :field_component,
     :show?,
     :index?,
@@ -117,6 +119,8 @@ defmodule AshSDUI.Resource.UiField do
           option_value: atom | nil,
           prompt: String.t() | nil,
           read_action: atom | nil,
+          option_filter: term,
+          option_sort: term,
           field_component: module | nil,
           show?: boolean,
           index?: boolean,
@@ -127,6 +131,44 @@ defmodule AshSDUI.Resource.UiField do
           empty_state: String.t() | nil,
           badge?: boolean,
           binding: atom | nil,
+          __spark_metadata__: any
+        }
+end
+
+defmodule AshSDUI.Resource.UiNestedForm do
+  @moduledoc false
+  defstruct [
+    :relationship,
+    :label,
+    :label_key,
+    :style,
+    :allow_add?,
+    :allow_remove?,
+    :allow_sort?,
+    :collapsed_by_default?,
+    :interaction_mode,
+    :order,
+    :__spark_metadata__
+  ]
+
+  @type t :: %__MODULE__{
+          relationship: atom,
+          label: String.t() | nil,
+          label_key: String.t() | nil,
+          style: :single | :list | nil,
+          allow_add?: boolean | nil,
+          allow_remove?: boolean | nil,
+          allow_sort?: boolean | nil,
+          collapsed_by_default?: boolean,
+          interaction_mode:
+            :pick_existing
+            | :create_inline
+            | :update_inline
+            | :create_or_update_inline
+            | :relate_and_update
+            | :many_to_many_with_join
+            | nil,
+          order: non_neg_integer,
           __spark_metadata__: any
         }
 end

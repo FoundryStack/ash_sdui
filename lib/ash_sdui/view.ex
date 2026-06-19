@@ -31,6 +31,8 @@ defmodule AshSDUI.View do
       :option_value,
       :prompt,
       :read_action,
+      :option_filter,
+      :option_sort,
       :options,
       :multiple?,
       :order,
@@ -58,6 +60,8 @@ defmodule AshSDUI.View do
             option_value: atom | nil,
             prompt: String.t() | nil,
             read_action: atom | nil,
+            option_filter: term,
+            option_sort: term,
             options: [{String.t(), term}],
             multiple?: boolean,
             order: non_neg_integer,
@@ -70,6 +74,53 @@ defmodule AshSDUI.View do
             badge?: boolean,
             binding: atom | nil,
             source: term
+          }
+  end
+
+  defmodule NestedForm do
+    @moduledoc false
+    defstruct [
+      :name,
+      :label,
+      :relationship,
+      :relationship_type,
+      :resource,
+      :style,
+      :allow_add?,
+      :allow_remove?,
+      :allow_sort?,
+      :collapsed_by_default?,
+      :interaction_mode,
+      :argument,
+      :create_action,
+      :update_action,
+      :lookup_read_action,
+      :lookup_update_action,
+      :join_action,
+      fields: [],
+      nested_forms: []
+    ]
+
+    @type t :: %__MODULE__{
+            name: atom,
+            label: String.t(),
+            relationship: atom,
+            relationship_type: atom,
+            resource: module,
+            style: :single | :list,
+            allow_add?: boolean,
+            allow_remove?: boolean,
+            allow_sort?: boolean,
+            collapsed_by_default?: boolean,
+            interaction_mode: atom,
+            argument: atom | nil,
+            create_action: atom | nil,
+            update_action: atom | nil,
+            lookup_read_action: atom | nil,
+            lookup_update_action: atom | nil,
+            join_action: atom | nil,
+            fields: [Field.t()],
+            nested_forms: [t()]
           }
   end
 
@@ -109,6 +160,7 @@ defmodule AshSDUI.View do
     bindings: [],
     queries: [],
     state: nil,
+    nested_forms: [],
     relationships: [],
     assigns: %{},
     refresh: nil,
@@ -129,6 +181,7 @@ defmodule AshSDUI.View do
           bindings: [Binding.t()],
           queries: [Query.t()],
           state: State.t() | nil,
+          nested_forms: [NestedForm.t()],
           relationships: [term],
           assigns: map,
           refresh: term,
@@ -177,6 +230,7 @@ defmodule AshSDUI.View do
         ui
         |> fields(resource, mode, action)
         |> apply_overrides(field_overrides),
+      nested_forms: nested_forms(ui, mode, action),
       intents:
         ui
         |> intents(context)
@@ -251,6 +305,8 @@ defmodule AshSDUI.View do
         option_value: field.option_value,
         prompt: field.prompt,
         read_action: field.read_action,
+        option_filter: field.option_filter,
+        option_sort: field.option_sort,
         options: field.options || [],
         multiple?: field.multiple? || false,
         order: (source && source.order) || 0,
@@ -288,6 +344,8 @@ defmodule AshSDUI.View do
         option_value: nil,
         prompt: nil,
         read_action: nil,
+        option_filter: nil,
+        option_sort: nil,
         options: [],
         multiple?: false,
         order: field.order,
@@ -309,6 +367,38 @@ defmodule AshSDUI.View do
     |> Info.ui_intents()
     |> Enum.reject(&(&1.requires_actor? && is_nil(context.actor)))
     |> Enum.map(&Intent.resolve(&1, ui))
+  end
+
+  defp nested_forms(ui, mode, action) when mode in [:new, :edit] do
+    ui
+    |> AshSDUI.Form.nested_forms(action)
+    |> Enum.map(&to_nested_form/1)
+  end
+
+  defp nested_forms(_ui, _mode, _action), do: []
+
+  defp to_nested_form(nested_form) do
+    %NestedForm{
+      name: nested_form.name,
+      label: nested_form.label,
+      relationship: nested_form.relationship,
+      relationship_type: nested_form.relationship_type,
+      resource: nested_form.resource,
+      style: nested_form.style,
+      allow_add?: nested_form.allow_add?,
+      allow_remove?: nested_form.allow_remove?,
+      allow_sort?: nested_form.allow_sort?,
+      collapsed_by_default?: nested_form.collapsed_by_default?,
+      interaction_mode: nested_form.interaction_mode,
+      argument: nested_form.argument,
+      create_action: nested_form.create_action,
+      update_action: nested_form.update_action,
+      lookup_read_action: nested_form.lookup_read_action,
+      lookup_update_action: nested_form.lookup_update_action,
+      join_action: nested_form.join_action,
+      fields: Enum.map(nested_form.fields, &struct(Field, &1)),
+      nested_forms: Enum.map(nested_form.nested_forms, &to_nested_form/1)
+    }
   end
 
   defp bindings(ui, resource, mode, query, context) do

@@ -138,6 +138,14 @@ defmodule AshSDUI.Resource do
         type: :atom,
         doc: "Read action used to load relationship selector options"
       ],
+      option_filter: [
+        type: :any,
+        doc: "Optional Ash filter input applied when loading relationship selector options"
+      ],
+      option_sort: [
+        type: :any,
+        doc: "Optional Ash sort applied when loading relationship selector options"
+      ],
       field_component: [
         type: :atom,
         doc: "Optional Phoenix component module used to render this field"
@@ -163,6 +171,54 @@ defmodule AshSDUI.Resource do
         doc: "Whether this field prefers badge-style rendering"
       ],
       binding: [type: :atom, doc: "Binding name this field reads from"],
+      order: [type: :non_neg_integer, default: 0, doc: "Display order (lower first)"]
+    ]
+  }
+
+  @ui_nested_form %Spark.Dsl.Entity{
+    name: :ui_nested_form,
+    describe: "Nested relationship form metadata",
+    examples: ["ui_nested_form :comments, label: \"Comments\", style: :list"],
+    args: [:relationship],
+    target: AshSDUI.Resource.UiNestedForm,
+    schema: [
+      relationship: [type: :atom, required: true, doc: "Relationship name"],
+      label: [type: :string, doc: "Display label (takes precedence over label_key)"],
+      label_key: [type: :string, doc: "Gettext message key for the nested form label"],
+      style: [
+        type: {:one_of, [:single, :list]},
+        doc: "Preferred nested form shape"
+      ],
+      allow_add?: [
+        type: :boolean,
+        doc: "Whether generated nested forms should show an add control"
+      ],
+      allow_remove?: [
+        type: :boolean,
+        doc: "Whether generated nested forms should show a remove control"
+      ],
+      allow_sort?: [
+        type: :boolean,
+        doc: "Whether generated nested forms should show ordering controls"
+      ],
+      collapsed_by_default?: [
+        type: :boolean,
+        default: false,
+        doc: "Whether the nested form section prefers a collapsed presentation"
+      ],
+      interaction_mode: [
+        type:
+          {:one_of,
+           [
+             :pick_existing,
+             :create_inline,
+             :update_inline,
+             :create_or_update_inline,
+             :relate_and_update,
+             :many_to_many_with_join
+           ]},
+        doc: "Explicit nested relationship interaction mode override"
+      ],
       order: [type: :non_neg_integer, default: 0, doc: "Display order (lower first)"]
     ]
   }
@@ -230,7 +286,7 @@ defmodule AshSDUI.Resource do
         doc: "Gettext domain for label_key lookups"
       ]
     ],
-    entities: [@view, @ui_intent, @ui_field, @ui_binding, @ui_query]
+    entities: [@view, @ui_intent, @ui_field, @ui_nested_form, @ui_binding, @ui_query]
   }
 
   use Spark.Dsl.Extension,
