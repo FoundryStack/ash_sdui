@@ -79,6 +79,7 @@ defmodule AshSdui.MixProject do
         "docs/reference/runtime_contract.md",
         "docs/explanation/runtime_model.md",
         "docs/explanation/authoring_model.md",
+        "docs/explanation/when_to_use_ash_sdui.md",
         "docs/explanation/demo_and_storybook.md"
       ],
       groups_for_extras: [

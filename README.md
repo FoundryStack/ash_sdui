@@ -15,6 +15,33 @@ declarative path that stays close to your Ash resource model.
 - It keeps generated screens, custom layouts, and live runtime components on one contract.
 - It can grow from generated pages into product UI without forcing a rewrite of the whole stack.
 
+## When to Use AshSDUI
+
+AshSDUI is designed as an authoring ladder for Ash-backed LiveView applications.
+
+Use it when you want:
+
+- repeated Ash-backed screens that share field, form, action, and query metadata
+- generated or semi-generated forms with relationship selectors and nested forms
+- custom page shells that still keep data loading on one runtime contract
+- server-driven layouts that vary by actor, tenant, audience, device, or runtime state
+- dynamic, ephemeral, or persisted layout trees
+- a smaller, safer authoring surface for humans and LLM agents
+
+Prefer raw LiveView when you are building:
+
+- one-off bespoke pages with little reusable resource metadata
+- interaction-heavy product UI with custom event flows at every layer
+- screens whose main complexity is not forms, actions, queries, or dynamic layout and reuse
+
+Rule of thumb: AshSDUI starts paying off when several screens share resource
+metadata such as fields, actions, queries, relationships, bindings, or layout
+structure. For one highly custom page, raw LiveView may be simpler. For
+repeated Ash-backed UI, AshSDUI reduces drift and boilerplate.
+
+See [When AshSDUI Pays Off](docs/explanation/when_to_use_ash_sdui.md) for a
+grounded comparison with demo-backed LOC ranges and adoption guidance.
+
 ## Features
 
 - Metadata-driven generated screens through `AshSDUI.LiveResource`
@@ -173,6 +200,7 @@ Avoid new code that depends on `AshSDUI.Layout.Persistence` directly.
 
 - [Runtime Model](docs/explanation/runtime_model.md)
 - [Authoring Model](docs/explanation/authoring_model.md)
+- [When AshSDUI Pays Off](docs/explanation/when_to_use_ash_sdui.md)
 - [Demo and Storybook](docs/explanation/demo_and_storybook.md)
 
 ## Demo and proof surfaces
