@@ -7,7 +7,7 @@ defmodule AshSdui.MixProject do
       name: "ash_sdui",
       source_url: "https://github.com/FoundryStack/ash_sdui",
       homepage_url: "https://hexdocs.pm/ash_sdui",
-      version: "0.1.0",
+      version: "0.2.0",
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -15,7 +15,7 @@ defmodule AshSdui.MixProject do
       aliases: aliases(),
       description: description(),
       package: package(),
-      docs: docs(),
+      docs: docs()
     ]
   end
 
