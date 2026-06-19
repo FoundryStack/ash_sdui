@@ -21,6 +21,11 @@ defmodule AshSDUI.UINodeTest do
       assert attr.default == :draft
     end
 
+    test "subject_id is a string so stored layouts can use record ids or resolver tokens" do
+      attr = UINode |> Ash.Resource.Info.attribute(:subject_id)
+      assert attr.type == Ash.Type.String
+    end
+
     test "component_name has format constraint" do
       attr = UINode |> Ash.Resource.Info.attribute(:component_name)
       constraint = attr.constraints[:match]

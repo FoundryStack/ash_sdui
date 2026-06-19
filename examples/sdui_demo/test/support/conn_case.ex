@@ -3,8 +3,8 @@ defmodule SduiDemoWeb.ConnCase do
 
   using do
     quote do
-      use Phoenix.ConnTest
       import Plug.Conn
+      import Phoenix.ConnTest
 
       @endpoint SduiDemoWeb.Endpoint
     end

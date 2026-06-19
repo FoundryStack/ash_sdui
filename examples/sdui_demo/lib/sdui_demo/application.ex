@@ -6,7 +6,8 @@ defmodule SduiDemo.Application do
     AshSDUI.Registry.init_table()
     SduiDemo.DemoData.bootstrap()
 
-    SduiDemo.UI.Layouts.DashboardLayout.register()
+    SduiDemo.UI.Layouts.BlogLayout.register()
+    AshSDUI.LayoutRecipe.Registry.register(:editorial_blog, SduiDemo.UI.Recipes.EditorialPosts)
 
     children = [
       {Phoenix.PubSub, name: SduiDemo.PubSub},

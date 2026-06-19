@@ -1,16 +1,58 @@
 # AshSDUI
 
-Server-Driven UI for Phoenix LiveView applications backed by [Ash](https://hexdocs.pm/ash) resources. AshSDUI lets you define UI layouts as data — either in code or persisted in your database — and render them dynamically in LiveView without redeploying.
+AshSDUI is a server-driven UI layer for Phoenix LiveView applications backed by
+[Ash](https://hexdocs.pm/ash). It combines metadata-driven generated screens,
+persisted or code-authored layout trees, and a shared runtime contract for
+building Ash-aware LiveView interfaces.
+
+## Why AshSDUI
+
+AshSDUI is useful when you want more than scaffolded CRUD, but you still want a
+declarative path that stays close to your Ash resource model.
+
+- It separates metadata, view resolution, recipes, and render trees into clear layers.
+- It gives humans and agents a smaller authoring surface through standalone UI modules.
+- It keeps generated screens, custom layouts, and live runtime components on one contract.
+- It can grow from generated pages into product UI without forcing a rewrite of the whole stack.
+
+## When to Use AshSDUI
+
+AshSDUI is designed as an authoring ladder for Ash-backed LiveView applications.
+
+Use it when you want:
+
+- repeated Ash-backed screens that share field, form, action, and query metadata
+- generated or semi-generated forms with relationship selectors and nested forms
+- custom page shells that still keep data loading on one runtime contract
+- server-driven layouts that vary by actor, tenant, audience, device, or runtime state
+- dynamic, ephemeral, or persisted layout trees
+- a smaller, safer authoring surface for humans and LLM agents
+
+Prefer raw LiveView when you are building:
+
+- one-off bespoke pages with little reusable resource metadata
+- interaction-heavy product UI with custom event flows at every layer
+- screens whose main complexity is not forms, actions, queries, or dynamic layout and reuse
+
+Rule of thumb: AshSDUI starts paying off when several screens share resource
+metadata such as fields, actions, queries, relationships, bindings, or layout
+structure. For one highly custom page, raw LiveView may be simpler. For
+repeated Ash-backed UI, AshSDUI reduces drift and boilerplate.
+
+See [When AshSDUI Pays Off](docs/explanation/when_to_use_ash_sdui.md) for a
+grounded comparison with demo-backed LOC ranges and adoption guidance.
 
 ## Features
 
-- Define UI layouts as composable trees of typed components
-- Persist and edit layouts at runtime via an Ash-powered `UINode` resource
-- Code-based layouts for static or config-driven screens
-- Registry-based component discovery with automatic scanning
-- ETS-backed cache with automatic invalidation when `UINode` records change
-- GraphQL fragment metadata on components for schema-driven tooling
-- Audit trail via `ash_paper_trail` on all `UINode` changes
+- Metadata-driven generated screens through `AshSDUI.LiveResource`
+- A shared runtime contract for generated views and SDUI layouts: `view`, `bindings`, `state`, and `context`
+- Layout authoring with `AshSDUI.Layout.Builder` plus persisted layouts through `AshSDUI.Layout`
+- Ephemeral runtime layouts through `AshSDUI.LiveScreen.assign_layout/3`
+- Metadata-driven forms and actions from `ui_field`, `ui_nested_form`, `ui_attribute`, and `ui_intent`
+- Live bindings with poll, PubSub, and stream-style update paths
+- Reusable runtime-aware components for lists, metrics, status, activity, and selection
+- Storybook and demo surfaces that exercise the generated and layout-rendered paths
+- ETS-backed layout caching with automatic invalidation for stored-node changes
 
 ## Installation
 
@@ -18,184 +60,158 @@ Server-Driven UI for Phoenix LiveView applications backed by [Ash](https://hexdo
 def deps do
   [
     {:ash_sdui, "~> 0.1"},
-    {:ash_postgres, "~> 2"},  # or your preferred Ash data layer
     {:phoenix_live_view, "~> 1"}
   ]
 end
 ```
 
-Configure the data layer for `AshSDUI.UINode`:
+The built-in `AshSDUI.UINode` uses ETS storage and is suitable for tests, demos,
+and local prototypes. Production applications that need database-backed layouts
+should provide a compatible Ash resource and pass it as `node_resource:`.
+
+## Quickstart
+
+The easiest end-to-end path is:
+
+1. define UI metadata for an Ash resource
+2. mount it with `AshSDUI.LiveResource`
+3. expose the generated screens from your router
 
 ```elixir
-# config/config.exs
-config :ash_sdui, AshSDUI.UINode,
-  data_layer: AshPostgres.DataLayer
-```
+defmodule MyApp.UI.PostUI do
+  use AshSDUI.Resource.Standalone
 
-## Core Concepts
+  sdui do
+    for_resource MyApp.Blog.Post
+    view :index, recipe: :collection, read_action: :read
+    view :new, recipe: :form, action: :create
 
-### Components
+    ui_field :title, label: "Headline", widget: :text_input, order: 0
+    ui_field :body, label: "Body", widget: :textarea, order: 1
+    ui_field :author_id, label: "Author", order: 2
 
-A component is a Phoenix function component registered with AshSDUI. Declare one with `use AshSDUI.Component`:
-
-```elixir
-defmodule MyAppWeb.Components.Player.ScoreCard do
-  use MyAppWeb, :live_component
-  use AshSDUI.Component, fragment: """
-    fragment PlayerScoreCardData on Player {
-      displayName
-      currentScore
-      rank
-    }
-  """
-
-  def render(assigns) do
-    ~H"""
-    <div class="score-card">
-      <h2><%= @subject.display_name %></h2>
-      <p>Score: <%= @subject.current_score %></p>
-      <p>Rank: #<%= @subject.rank %></p>
-    </div>
-    """
+    ui_intent :create,
+      label: "Write post",
+      target: {:navigate, "/posts/new"}
   end
+end
+
+defmodule MyAppWeb.PostsLive do
+  use AshSDUI.LiveResource,
+    ui: MyApp.UI.PostUI,
+    view: :index,
+    domain: MyApp.Blog
+end
+
+defmodule MyAppWeb.PostNewLive do
+  use AshSDUI.LiveResource,
+    ui: MyApp.UI.PostUI,
+    view: :new,
+    domain: MyApp.Blog
 end
 ```
 
-The component is automatically registered in `AshSDUI.Registry` under the name derived from its module (e.g., `"Player.ScoreCard@v1"`). Set `@version "v2"` before `use AshSDUI.Component` to override the default `v1`.
-
-### Layouts
-
-Layouts are named trees of component references. Define them in code:
-
 ```elixir
-AshSDUI.Layout.register("player-dashboard", %AshSDUI.Layout.LayoutDef{
-  name: "player-dashboard",
-  root: %AshSDUI.Layout.Node{
-    component: "Player.ScoreCard@v1",
-    subject_resource: "MyApp.Game.Player",
-    subject_id: "first",
-    children: [
-      %AshSDUI.Layout.Node{
-        component: "Player.ActivityFeed@v1",
-        region: :sidebar,
-        order: 0
-      }
-    ]
-  }
-})
-```
+scope "/", MyAppWeb do
+  pipe_through :browser
 
-Or create them dynamically via `AshSDUI.UINode` Ash actions:
-
-```elixir
-AshSDUI.UINode
-|> Ash.Changeset.for_create(:create, %{
-  component_name: "Player.ScoreCard@v1",
-  subject_resource: "MyApp.Game.Player",
-  subject_id: player_id,
-  region: :default,
-  order: 0
-})
-|> Ash.create!()
-```
-
-### LiveView Integration
-
-Add `use AshSDUI` to any LiveView. It injects a `mount/3` that resolves and renders the layout tree, and a `sdui_root/1` component for rendering it:
-
-```elixir
-defmodule MyAppWeb.Live.PlayerDashboard do
-  use MyAppWeb, :live_view
-  use AshSDUI, lookup: {:from_params, :name}
-
-  def render(assigns) do
-    ~H"""
-    <%= if @__sdui_tree__ do %>
-      <.sdui_root />
-    <% else %>
-      <div>Layout not found</div>
-    <% end %>
-    """
-  end
+  live "/posts", PostsLive
+  live "/posts/new", PostNewLive
 end
 ```
 
-The `:lookup` option controls how the layout name is resolved:
+This gives you:
 
-| Strategy                        | Example                  | Resolves to                 |
-| ------------------------------- | ------------------------ | --------------------------- |
-| `{:from_params, :name}`         | `?name=player-dashboard` | `"player-dashboard"`        |
-| `{:static, "player-dashboard"}` | —                        | Always `"player-dashboard"` |
+- a generated collection screen at `/posts`
+- a generated form screen at `/posts/new`
+- form widgets driven by `ui_field` metadata
+- action labels and targets driven by `ui_intent` metadata
+- room to add relationship-aware widgets such as generated selects without
+  replacing the generated host
 
-You can override `mount/3` after `use AshSDUI` to add your own socket assigns — the injected mount is declared `defoverridable`.
+Prefer this path before stepping up to custom recipes or hand-authored
+LiveViews.
 
-## UINode Resource
-
-`AshSDUI.UINode` is an Ash resource that stores individual nodes of a dynamic layout.
-
-### Attributes
-
-| Attribute           | Type       | Notes                                                  |
-| ------------------- | ---------- | ------------------------------------------------------ |
-| `:id`               | `:uuid`    | Primary key                                            |
-| `:component_name`   | `:string`  | Required. Pattern: `^[A-Za-z0-9\.]+@v\d+$`             |
-| `:static_props`     | `:map`     | Default: `%{}`                                         |
-| `:subject_resource` | `:string`  | Optional Ash resource module name                      |
-| `:subject_id`       | `:uuid`    | Optional. Use `"first"` to resolve the first record    |
-| `:region`           | `:atom`    | Default: `:default`                                    |
-| `:order`            | `:integer` | Default: `0`                                           |
-| `:status`           | `:atom`    | `:draft`, `:published`, `:archived`. Default: `:draft` |
-| `:name`             | `:string`  | Optional human label                                   |
-| `:parent_id`        | `:uuid`    | Optional. Points to parent `UINode`                    |
-
-### Actions
-
-| Action     | Type    | Notes                          |
-| ---------- | ------- | ------------------------------ |
-| `:read`    | read    | Default                        |
-| `:create`  | create  | Accepts all attributes         |
-| `:update`  | update  | Accepts all attributes         |
-| `:destroy` | destroy | Default                        |
-| `:publish` | update  | Sets `:status` to `:published` |
-| `:revert`  | update  | Sets `:status` to `:archived`  |
-
-### Audit Trail
-
-All changes to `UINode` are tracked via `ash_paper_trail` in `:changes_only` mode. This gives you a full revision history out of the box.
-
-## Caching
-
-`AshSDUI.Cache` is an ETS-backed cache keyed on layout name. Rendered trees are cached after the first render and automatically evicted whenever a relevant `UINode` is created, updated, or destroyed (via `AshSDUI.Notifier`).
-
-Manual cache operations:
+If a generated form should let the user pick an existing related record, keep
+that in metadata too:
 
 ```elixir
-AshSDUI.Cache.get("player-dashboard")   # {:ok, tree} | {:error, :not_found}
-AshSDUI.Cache.evict("player-dashboard") # :ok
-AshSDUI.Cache.flush()                   # clears all entries
+ui_field :author_id,
+  label: "Author",
+  order: 2
 ```
 
-## Component Registry
+When `:author_id` matches a `belongs_to` relationship source attribute such as
+`author`, the generated form now renders a select automatically and loads the
+options from the related resource's read action. For relationship arguments such
+as `:tag_ids`, use `relationship:` and let the form render a multiselect.
 
-`AshSDUI.Registry` holds all discovered components. It is backed by ETS (fast concurrent reads) plus `persistent_term` (survives ETS resets).
+If the form should create or edit related records inline, model that
+separately with `ui_nested_form`:
 
 ```elixir
-AshSDUI.Registry.lookup("Player.ScoreCard@v1")
-# {:ok, %{module: MyAppWeb.Components.Player.ScoreCard, name: "Player.ScoreCard@v1",
-#          fragment: "fragment PlayerScoreCardData on Player { ... }",
-#          subject_types: ["Player"]}}
+create :create do
+  accept [:title]
+  argument :comments, {:array, :map}, allow_nil?: true
 
-AshSDUI.Registry.all()
-# [%{module: ..., name: ..., fragment: ..., subject_types: [...]}, ...]
+  change manage_relationship(:comments, :comments, type: :direct_control)
+end
 
-AshSDUI.Registry.discover_components()
-# Scans all loaded OTP applications and registers any module using AshSDUI.Component
+sdui do
+  ui_field :title, label: "Headline", order: 1
+  ui_nested_form :comments, label: "Comments", order: 2
+end
 ```
 
-## Subject Resolution
+That keeps relationship picking on `ui_field` and inline related-record editing
+on `ui_nested_form`.
 
-When a `UINode` has a `:subject_resource` and `:subject_id`, `AshSDUI.Calculations.ResolveSubject.resolve/1` fetches the live Ash record and passes it to the component as `@subject`. Using `"first"` as the subject ID returns the first record from the resource.
+For layout authoring, prefer:
 
-## License
+- `AshSDUI.Layout.Builder.resource/2` and `resources/3`
+- `AshSDUI.Layout.fetch/2`, `register/2`, `save/3`, and `publish/2`
+- `AshSDUI.LiveScreen.assign_layout/3`
 
-MIT
+Avoid new code that depends on `AshSDUI.Layout.Persistence` directly.
+
+## Documentation
+
+### Tutorial
+
+- [Build Your First Generated Screen](docs/tutorials/build_your_first_generated_screen.md)
+
+### How-to Guides
+
+- [Author Generated Screens](docs/how-to/author_generated_screens.md)
+- [Customize Generated Forms](docs/how-to/customize_generated_forms.md)
+- [Use Queries and Filters](docs/how-to/use_queries_and_filters.md)
+- [Add Live Bindings](docs/how-to/add_live_bindings.md)
+- [Render Generated Views in Storybook](docs/how-to/render_generated_views_in_storybook.md)
+- [Use `layout: :sdui` Recipes](docs/how-to/use_layout_sdui_recipes.md)
+- [Build Nested Layouts](docs/how-to/build_nested_layouts.md)
+- [Work with SDUI Layouts](docs/how-to/work_with_sdui_layouts.md)
+
+### Reference
+
+- [Public API Map](docs/reference/public_api.md)
+- [Runtime Contract](docs/reference/runtime_contract.md)
+
+### Explanation
+
+- [Runtime Model](docs/explanation/runtime_model.md)
+- [Authoring Model](docs/explanation/authoring_model.md)
+- [When AshSDUI Pays Off](docs/explanation/when_to_use_ash_sdui.md)
+- [Demo and Storybook](docs/explanation/demo_and_storybook.md)
+
+## Demo and proof surfaces
+
+`examples/sdui_demo` is the public proof surface for promoted features. It maps
+generated screens, runtime bindings, hybrid layouts, and persisted layouts to a
+demo route, Storybook surface, and regression test.
+
+Storybook is part of that proof surface. Prefer generated-view and reusable
+building-block stories over raw low-level component stories when documenting or
+reviewing package behavior.
+
+See [examples/sdui_demo/README.md](examples/sdui_demo/README.md) for the current
+coverage matrix.

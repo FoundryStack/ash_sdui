@@ -3,64 +3,55 @@ defmodule SduiDemoWeb.Live.DemoLiveTest do
 
   import Phoenix.LiveViewTest
 
-  setup do
-    # Initialize registry
-    AshSDUI.Registry.init_table()
-
-    # Create a test user (will be the first and only user in the ETS table)
-    {:ok, user} =
-      SduiDemo.Accounts.User
-      |> Ash.Changeset.for_create(:create, %{
-        username: "test_user",
-        email: "test@example.com",
-        avatar_url: "https://example.com/test.jpg"
-      })
-      |> Ash.create()
-
-    {:ok, user: user}
-  end
-
-  describe "demo_live renders components" do
-    test "renders root TwoColumnLayout component", %{conn: conn} do
+  describe "demo_live landing page" do
+    test "renders editorial hero section with AshSDUI title", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
-      # Verify the layout structure is present
-      assert html =~ "two-column-layout"
-      assert html =~ "sidebar"
-      assert html =~ "main-content"
+      assert html =~ "AshSDUI"
+      assert html =~ "Server-driven UI for real Phoenix surfaces"
+      assert html =~ "Feature Tour"
     end
 
-    test "renders ActionButton in main region", %{conn: conn} do
+    test "renders product highlights", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
-      # Verify ActionButton is rendered with proper class and content
-      assert html =~ "action-button"
-      assert html =~ "Click"
+      assert html =~ "View metadata"
+      assert html =~ "Query lifecycle"
+      assert html =~ "Recipe customization"
+      assert html =~ "Layout API tour"
+      assert html =~ "Storybook parity"
+      assert html =~ "Live runtime state"
     end
 
-    test "renders nested components with proper HTML structure", %{conn: conn} do
+    test "renders navigation links to showcase routes", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
-      # Verify proper nesting with opening and closing tags
-      assert html =~ ~s(<div class="two-column-layout")
-      assert html =~ ~s(<aside class="sidebar">)
-      assert html =~ ~s(<main class="main-content">)
-      assert html =~ ~s(</aside>)
-      assert html =~ ~s(</main>)
+      assert html =~ "/posts"
+      assert html =~ "/posts/generated"
+      assert html =~ "/live/hybrid"
+      assert html =~ "/layouts/manage"
+      assert html =~ "Open the blog"
+      assert html =~ "Open generated index"
+      assert html =~ "Open layout tour"
     end
 
-    test "renders UserCard with loaded user data", %{conn: conn} do
+    test "renders refreshed how it works section", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
-      # Verify UserCard is rendered
-      assert html =~ "user-card"
+      assert html =~ "How it works"
+      assert html =~ "Describe the resource"
+      assert html =~ "Resolve a view"
+      assert html =~ "Render, persist, or override"
+    end
 
-      # Verify user data is loaded (not showing "No user loaded")
-      refute html =~ "No user loaded"
+    test "renders the demo feature map", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
 
-      # The demo layout resolves the first available user for display
-      assert html =~ "_user"
-      assert html =~ "@example.com"
+      assert html =~ "Generated Views"
+      assert html =~ "Custom Recipe"
+      assert html =~ "Ephemeral Layouts"
+      assert html =~ "Live Runtime"
+      assert html =~ "Layout API"
     end
   end
 end

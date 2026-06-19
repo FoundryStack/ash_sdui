@@ -10,7 +10,9 @@ defmodule AshSDUI.RegistryTest do
   end
 
   test "register and lookup a component" do
-    Registry.register("UserProfile.Header@v1", FakeModule, %{fragment: "fragment X on User { id }"})
+    Registry.register("UserProfile.Header@v1", FakeModule, %{
+      fragment: "fragment X on User { id }"
+    })
 
     assert {:ok, entry} = Registry.lookup("UserProfile.Header@v1")
     assert entry.module == FakeModule

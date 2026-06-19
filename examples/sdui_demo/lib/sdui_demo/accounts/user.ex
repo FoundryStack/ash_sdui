@@ -8,25 +8,25 @@ defmodule SduiDemo.Accounts.User do
   end
 
   attributes do
-    uuid_primary_key :id
+    uuid_primary_key(:id)
 
     attribute :username, :string do
-      allow_nil? false
+      allow_nil?(false)
     end
 
-    attribute :avatar_url, :string
-    attribute :email, :string
+    attribute(:avatar_url, :string)
+    attribute(:email, :string)
   end
 
   actions do
-    defaults [:read, :destroy]
+    defaults([:read, :destroy])
 
     create :create do
-      accept [:username, :email, :avatar_url]
+      accept([:username, :email, :avatar_url])
     end
 
     update :update do
-      accept [:username, :email, :avatar_url]
+      accept([:username, :email, :avatar_url])
     end
   end
 end

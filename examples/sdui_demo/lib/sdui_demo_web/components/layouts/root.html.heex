@@ -1,11 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SDUI Demo</title>
+    <meta name="csrf-token" content={Phoenix.Controller.get_csrf_token()} />
+    <title>SDUI Demo Blog</title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
   </head>
   <body>
+    <nav class="border-b border-base-300 bg-base-100/95 backdrop-blur">
+      <div class="mx-auto flex min-h-20 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+        <a href="/" class="flex items-center gap-3 text-base-content">
+          <span class="flex size-10 items-center justify-center rounded-full bg-primary/12 text-lg text-primary">
+            ✦
+          </span>
+          <span class="flex flex-col">
+            <span class="text-sm font-medium uppercase tracking-[0.2em] text-base-content/55">
+              Demo
+            </span>
+            <span class="text-lg font-semibold">AshSDUI Blog</span>
+          </span>
+        </a>
+        <div class="hidden items-center gap-2 md:flex">
+          <a href="/" class="btn btn-ghost btn-sm">Home</a>
+          <a href="/posts" class="btn btn-ghost btn-sm">Journal</a>
+          <a href="/posts/generated" class="btn btn-ghost btn-sm">Generated</a>
+          <a href="/layouts/manage" class="btn btn-ghost btn-sm">Layouts</a>
+          <a href="/storybook" class="btn btn-ghost btn-sm">Storybook</a>
+          <a href="/posts/new" class="btn btn-primary btn-sm">New Post</a>
+        </div>
+      </div>
+    </nav>
+
     <%= @inner_content %>
   </body>
 </html>

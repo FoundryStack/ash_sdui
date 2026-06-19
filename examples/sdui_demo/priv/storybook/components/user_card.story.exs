@@ -10,7 +10,11 @@ defmodule SduiDemoWeb.Storybook.Components.UserCard do
         id: :with_user,
         description: "UserCard with a mock user subject",
         attributes: %{
-          subject: %{username: "alice", avatar_url: "https://placekitten.com/64/64", email: "alice@example.com"},
+          subject: %{
+            username: "alice",
+            avatar_url: "https://placekitten.com/64/64",
+            email: "alice@example.com"
+          },
           props: %{},
           region: :sidebar,
           children: %{}

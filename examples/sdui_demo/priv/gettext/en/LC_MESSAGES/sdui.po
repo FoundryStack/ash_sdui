@@ -1,0 +1,66 @@
+## `msgid`s in this file come from AshSDUI label_key annotations.
+## Run `mix gettext.extract` to update.
+
+msgid ""
+msgstr ""
+"Language: en\n"
+
+## User fields
+msgid "user.username"
+msgstr "Username"
+
+msgid "user.email"
+msgstr "Email Address"
+
+msgid "user.avatar_url"
+msgstr "Avatar"
+
+## User actions
+msgid "user.action.create"
+msgstr "Create User"
+
+msgid "user.action.update"
+msgstr "Edit User"
+
+msgid "user.action.destroy"
+msgstr "Delete User"
+
+## Post fields
+msgid "post.title"
+msgstr "Title"
+
+msgid "post.body"
+msgstr "Content"
+
+msgid "post.published_at"
+msgstr "Published At"
+
+## Post actions
+msgid "post.action.create"
+msgstr "New Post"
+
+msgid "post.action.update"
+msgstr "Edit Post"
+
+msgid "post.action.publish"
+msgstr "Publish"
+
+msgid "post.action.destroy"
+msgstr "Delete Post"
+
+## Comment fields
+msgid "comment.body"
+msgstr "Comment"
+
+msgid "comment.posted_at"
+msgstr "Posted At"
+
+## Comment actions
+msgid "comment.action.create"
+msgstr "Add Comment"
+
+msgid "comment.action.update"
+msgstr "Edit Comment"
+
+msgid "comment.action.destroy"
+msgstr "Delete Comment"
