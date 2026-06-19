@@ -29,7 +29,10 @@ defmodule SduiDemoWeb.Components.EditorialPostsPage do
       |> assign(:posts, Map.get(props, :posts, []))
 
     ~H"""
-    <section class="space-y-10" data-testid="editorial-posts-page">
+    <section
+      class="mx-auto w-full max-w-6xl space-y-10 px-4 py-10 sm:px-6"
+      data-testid="editorial-posts-page"
+    >
       <header class="space-y-4 border-b border-base-300 pb-8">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div class="max-w-3xl space-y-3">

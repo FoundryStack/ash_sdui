@@ -63,12 +63,17 @@ defmodule SduiDemoWeb.Live.PostFormLive do
   end
 
   @impl true
+  def render(%{ash_sdui_error: reason} = assigns) when not is_nil(reason) do
+    AshSDUI.LiveResource.Render.render_error(assigns, reason)
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <.post_form_page_layout
-      page_title={@ash_sdui_view.assigns.title}
+      page_title={resolved_page_title(assigns)}
       form={@form}
-      fields={@ash_sdui_view.fields}
+      fields={resolved_fields(assigns)}
       live_action={@live_action}
       post={@subject || @post}
     />
@@ -94,6 +99,12 @@ defmodule SduiDemoWeb.Live.PostFormLive do
   defp live_resource_opts(mode) do
     [ui: @resource_ui, view: mode, domain: @domain]
   end
+
+  defp resolved_page_title(%{page_title: title}) when is_binary(title), do: title
+  defp resolved_page_title(%{live_action: live_action}), do: page_title(live_action)
+
+  defp resolved_fields(%{ash_sdui_view: %{fields: fields}}) when is_list(fields), do: fields
+  defp resolved_fields(_assigns), do: []
 
   defp post_form_page_layout(assigns) do
     SduiDemoWeb.Components.Layouts.PostFormPageLayout.render(assigns)
