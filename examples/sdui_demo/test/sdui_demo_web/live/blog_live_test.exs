@@ -66,6 +66,8 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
       {:ok, _view, html} = live(conn, "/posts")
 
       assert html =~ ~s(data-testid="editorial-feed")
+      assert html =~ ~s(data-testid="editorial-posts-page")
+      assert html =~ "mx-auto w-full max-w-6xl"
       assert html =~ "Featured story"
       assert html =~ "More from the feed"
       assert html =~ "tuned through recipe_overrides"
@@ -115,6 +117,7 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
     } do
       {:ok, _view, html} = live(conn, "/posts/generated")
 
+      assert html =~ "mx-auto w-full max-w-6xl"
       assert html =~ "Headline"
       assert html =~ "Published"
       assert html =~ "Compose Post"
@@ -308,6 +311,7 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
     test "generated detail route renders through view metadata", %{conn: conn, post: post} do
       {:ok, _view, html} = live(conn, "/posts/generated/#{post.id}")
 
+      assert html =~ "mx-auto w-full max-w-6xl"
       assert html =~ post.title
       assert html =~ post.body
       assert html =~ ~s(data-testid="record-detail")

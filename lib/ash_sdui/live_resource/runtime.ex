@@ -311,7 +311,9 @@ defmodule AshSDUI.LiveResource.Runtime do
           [
             as: form_name(view.resource),
             forms: generated_nested_forms_opts(view),
-            prepare_params: &AshSDUI.Form.prepare_params(&1, view.fields)
+            prepare_params: fn params, _phase ->
+              AshSDUI.Form.prepare_params(params, view.fields)
+            end
           ]
       )
 
@@ -333,7 +335,9 @@ defmodule AshSDUI.LiveResource.Runtime do
               as: form_name(view.resource),
               forms: generated_nested_forms_opts(view),
               params: params,
-              prepare_params: &AshSDUI.Form.prepare_params(&1, view.fields)
+              prepare_params: fn params, _phase ->
+                AshSDUI.Form.prepare_params(params, view.fields)
+              end
             ]
         )
 

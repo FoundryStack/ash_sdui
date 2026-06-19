@@ -35,13 +35,13 @@ defmodule SduiDemoWeb.StorybookTest do
   test "storybook pages load the demo stylesheet", %{conn: conn} do
     conn = get(conn, "/storybook/components/post_ui_show")
 
-    assert html_response(conn, 200) =~ ~s(@import "/assets/app.css?hash=)
+    assert html_response(conn, 200) =~ ~r/@import "\/assets\/app\.css(?:\?hash=[0-9a-f]+)?"/
   end
 
   test "storybook iframe loads the demo stylesheet from an absolute path", %{conn: conn} do
     conn = get(conn, "/storybook/iframe/layouts/raw_tree_showcase")
 
-    assert html_response(conn, 200) =~ ~s(@import "/assets/app.css?hash=)
+    assert html_response(conn, 200) =~ ~r/@import "\/assets\/app\.css(?:\?hash=[0-9a-f]+)?"/
   end
 
   test "storybook uses the shared app stylesheet contract" do

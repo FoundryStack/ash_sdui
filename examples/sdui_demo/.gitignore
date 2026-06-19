@@ -1,2 +1,3 @@
 node_modules
 erl_crash.dump
+priv/static/assets
