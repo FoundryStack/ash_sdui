@@ -52,15 +52,16 @@ The easiest end-to-end path is:
 
 ```elixir
 defmodule MyApp.UI.PostUI do
-  use AshSDUI.Resource,
-    resource: MyApp.Blog.Post
+  use AshSDUI.Resource.Standalone
 
   sdui do
+    for_resource MyApp.Blog.Post
     view :index, recipe: :collection, read_action: :read
     view :new, recipe: :form, action: :create
 
     ui_field :title, label: "Headline", widget: :text_input, order: 0
     ui_field :body, label: "Body", widget: :textarea, order: 1
+    ui_field :author_id, label: "Author", order: 2
 
     ui_intent :create,
       label: "Write post",
@@ -98,10 +99,25 @@ This gives you:
 - a generated form screen at `/posts/new`
 - form widgets driven by `ui_field` metadata
 - action labels and targets driven by `ui_intent` metadata
+- room to add relationship-aware widgets such as generated selects without
+  replacing the generated host
 
 Prefer this path before stepping up to custom recipes or hand-authored
-LiveViews. Use `widget:` when a generated form should render `:textarea`,
-`:email`, or another non-default input.
+LiveViews.
+
+If a generated form should let the user pick an existing related record, keep
+that in metadata too:
+
+```elixir
+ui_field :author_id,
+  label: "Author",
+  order: 2
+```
+
+When `:author_id` matches a `belongs_to` relationship source attribute such as
+`author`, the generated form now renders a select automatically and loads the
+options from the related resource's read action. For relationship arguments such
+as `:tag_ids`, use `relationship:` and let the form render a multiselect.
 
 For layout authoring, prefer:
 
@@ -120,6 +136,12 @@ Avoid new code that depends on `AshSDUI.Layout.Persistence` directly.
 ### How-to Guides
 
 - [Author Generated Screens](docs/how-to/author_generated_screens.md)
+- [Customize Generated Forms](docs/how-to/customize_generated_forms.md)
+- [Use Queries and Filters](docs/how-to/use_queries_and_filters.md)
+- [Add Live Bindings](docs/how-to/add_live_bindings.md)
+- [Render Generated Views in Storybook](docs/how-to/render_generated_views_in_storybook.md)
+- [Use `layout: :sdui` Recipes](docs/how-to/use_layout_sdui_recipes.md)
+- [Build Nested Layouts](docs/how-to/build_nested_layouts.md)
 - [Work with SDUI Layouts](docs/how-to/work_with_sdui_layouts.md)
 
 ### Reference

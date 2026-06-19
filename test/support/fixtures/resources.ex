@@ -568,3 +568,273 @@ defmodule AshSDUI.TestFixtures.ViewArticleUI do
     )
   end
 end
+
+defmodule AshSDUI.TestFixtures.RelationshipSelectDomain do
+  use Ash.Domain, validate_config_inclusion?: false
+
+  resources do
+    resource(AshSDUI.TestFixtures.RelationshipAuthor)
+    resource(AshSDUI.TestFixtures.RelationshipCover)
+    resource(AshSDUI.TestFixtures.RelationshipComment)
+    resource(AshSDUI.TestFixtures.RelationshipTag)
+    resource(AshSDUI.TestFixtures.RelationshipArticleTag)
+    resource(AshSDUI.TestFixtures.RelationshipArticle)
+  end
+end
+
+defmodule AshSDUI.TestFixtures.RelationshipAuthor do
+  use Ash.Resource,
+    domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
+    data_layer: Ash.DataLayer.Ets
+
+  ets do
+    private?(false)
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+    attribute(:username, :string, allow_nil?: false)
+    attribute(:email, :string)
+  end
+
+  actions do
+    defaults([:read, :destroy])
+
+    create :create do
+      primary?(true)
+      accept([:username, :email])
+    end
+
+    update :update do
+      primary?(true)
+      accept([:username, :email])
+    end
+  end
+end
+
+defmodule AshSDUI.TestFixtures.RelationshipCover do
+  use Ash.Resource,
+    domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
+    data_layer: Ash.DataLayer.Ets
+
+  ets do
+    private?(false)
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+    attribute(:title, :string, allow_nil?: false)
+    attribute(:article_id, :uuid)
+  end
+
+  relationships do
+    belongs_to :article, AshSDUI.TestFixtures.RelationshipArticle do
+      source_attribute(:article_id)
+      define_attribute?(false)
+    end
+  end
+
+  actions do
+    defaults([:read, :destroy])
+
+    create :create do
+      primary?(true)
+      accept([:title, :article_id])
+    end
+
+    update :update do
+      primary?(true)
+      accept([:title, :article_id])
+    end
+  end
+end
+
+defmodule AshSDUI.TestFixtures.RelationshipComment do
+  use Ash.Resource,
+    domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
+    data_layer: Ash.DataLayer.Ets
+
+  ets do
+    private?(false)
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+    attribute(:body, :string, allow_nil?: false)
+    attribute(:article_id, :uuid)
+  end
+
+  relationships do
+    belongs_to :article, AshSDUI.TestFixtures.RelationshipArticle do
+      source_attribute(:article_id)
+      define_attribute?(false)
+    end
+  end
+
+  actions do
+    defaults([:read, :destroy])
+
+    create :create do
+      primary?(true)
+      accept([:body, :article_id])
+    end
+
+    update :update do
+      primary?(true)
+      accept([:body, :article_id])
+    end
+  end
+end
+
+defmodule AshSDUI.TestFixtures.RelationshipTag do
+  use Ash.Resource,
+    domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
+    data_layer: Ash.DataLayer.Ets
+
+  ets do
+    private?(false)
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+    attribute(:name, :string, allow_nil?: false)
+  end
+
+  actions do
+    defaults([:read, :destroy])
+
+    create :create do
+      primary?(true)
+      accept([:name])
+    end
+
+    update :update do
+      primary?(true)
+      accept([:name])
+    end
+  end
+end
+
+defmodule AshSDUI.TestFixtures.RelationshipArticleTag do
+  use Ash.Resource,
+    domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
+    data_layer: Ash.DataLayer.Ets
+
+  ets do
+    private?(false)
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+  end
+
+  relationships do
+    belongs_to :article, AshSDUI.TestFixtures.RelationshipArticle do
+      primary_key?(true)
+      allow_nil?(false)
+    end
+
+    belongs_to :tag, AshSDUI.TestFixtures.RelationshipTag do
+      primary_key?(true)
+      allow_nil?(false)
+    end
+  end
+
+  actions do
+    defaults([:read, :destroy, create: :*, update: :*])
+  end
+end
+
+defmodule AshSDUI.TestFixtures.RelationshipArticle do
+  use Ash.Resource,
+    domain: AshSDUI.TestFixtures.RelationshipSelectDomain,
+    data_layer: Ash.DataLayer.Ets
+
+  ets do
+    private?(false)
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+
+    attribute :title, :string do
+      allow_nil?(false)
+    end
+
+    attribute(:author_id, :uuid)
+  end
+
+  relationships do
+    belongs_to :author, AshSDUI.TestFixtures.RelationshipAuthor do
+      source_attribute(:author_id)
+      define_attribute?(false)
+    end
+
+    has_one :cover, AshSDUI.TestFixtures.RelationshipCover do
+      destination_attribute(:article_id)
+    end
+
+    has_many :comments, AshSDUI.TestFixtures.RelationshipComment do
+      destination_attribute(:article_id)
+    end
+
+    many_to_many :tags, AshSDUI.TestFixtures.RelationshipTag do
+      through(AshSDUI.TestFixtures.RelationshipArticleTag)
+      source_attribute_on_join_resource(:article_id)
+      destination_attribute_on_join_resource(:tag_id)
+    end
+  end
+
+  actions do
+    read :read do
+      primary?(true)
+    end
+
+    create :create do
+      primary?(true)
+      accept([:title, :author_id])
+      argument(:cover_id, :uuid)
+      argument(:comment_ids, {:array, :uuid}, allow_nil?: true)
+      argument(:tag_ids, {:array, :uuid}, allow_nil?: true)
+      change(manage_relationship(:cover_id, :cover, type: :append_and_remove))
+      change(manage_relationship(:comment_ids, :comments, type: :append_and_remove))
+      change(manage_relationship(:tag_ids, :tags, type: :append_and_remove))
+    end
+
+    update :update do
+      primary?(true)
+      require_atomic?(false)
+      accept([:title, :author_id])
+      argument(:cover_id, :uuid)
+      argument(:comment_ids, {:array, :uuid}, allow_nil?: true)
+      argument(:tag_ids, {:array, :uuid}, allow_nil?: true)
+      change(manage_relationship(:cover_id, :cover, type: :append_and_remove))
+      change(manage_relationship(:comment_ids, :comments, type: :append_and_remove))
+      change(manage_relationship(:tag_ids, :tags, type: :append_and_remove))
+    end
+  end
+end
+
+defmodule AshSDUI.TestFixtures.RelationshipArticleUI do
+  use AshSDUI.Resource.Standalone
+
+  sdui do
+    for_resource(AshSDUI.TestFixtures.RelationshipArticle)
+
+    view(:new, recipe: :form, action: :create)
+    view(:edit, recipe: :form, action: :update)
+
+    ui_field(:title, label: "Title", order: 1)
+    ui_field(:author_id, label: "Author", order: 2)
+    ui_field(:cover_id, label: "Cover", order: 3, relationship: :cover, option_label: :title)
+
+    ui_field(:comment_ids,
+      label: "Comments",
+      order: 4,
+      relationship: :comments,
+      option_label: :body
+    )
+
+    ui_field(:tag_ids, label: "Tags", order: 5, relationship: :tags, option_label: :name)
+  end
+end

@@ -71,6 +71,45 @@ defmodule AshSDUI.Components.FieldInput do
   def default_input(%{field: %{widget: :datetime}} = assigns),
     do: text_input(assigns, "datetime-local")
 
+  def default_input(%{field: %{widget: :select}} = assigns) do
+    assigns =
+      assigns
+      |> assign(:prompt, Map.get(assigns.field, :prompt))
+      |> assign(:options, Map.get(assigns.field, :options, []))
+
+    ~H"""
+    <select
+      name={@input.name}
+      class={["select select-bordered w-full", @errors != [] && "select-error", @class]}
+    >
+      <option :if={@prompt} value="">{@prompt}</option>
+      {Phoenix.HTML.Form.options_for_select(@options, @value)}
+    </select>
+    """
+  end
+
+  def default_input(%{field: %{widget: :multiselect}} = assigns) do
+    selected =
+      assigns.value
+      |> List.wrap()
+      |> Enum.reject(&(&1 in [nil, ""]))
+
+    assigns =
+      assigns
+      |> assign(:selected, selected)
+      |> assign(:options, Map.get(assigns.field, :options, []))
+
+    ~H"""
+    <select
+      name={@input.name <> "[]"}
+      multiple
+      class={["select select-bordered w-full min-h-40", @errors != [] && "select-error", @class]}
+    >
+      {Phoenix.HTML.Form.options_for_select(@options, @selected)}
+    </select>
+    """
+  end
+
   def default_input(assigns), do: text_input(assigns, "text")
 
   defp text_input(assigns, type) do

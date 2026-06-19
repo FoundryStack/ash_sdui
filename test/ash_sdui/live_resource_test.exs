@@ -149,7 +149,11 @@ defmodule AshSDUI.LiveResourceTest do
     assert {:ok, socket} = HookedPostsLive.mount(%{}, %{}, %Phoenix.LiveView.Socket{})
 
     assert {:noreply, refreshed_socket} =
-             HookedPostsLive.handle_params(%{"search" => "Launch"}, "/posts?search=Launch", socket)
+             HookedPostsLive.handle_params(
+               %{"search" => "Launch"},
+               "/posts?search=Launch",
+               socket
+             )
 
     assert refreshed_socket.assigns.ash_sdui_view.context.audience == :staff
     assert refreshed_socket.assigns.demo_flag == true
@@ -228,7 +232,8 @@ defmodule AshSDUI.LiveResourceTest do
       |> put_runtime_state(selected_state)
       |> Phoenix.Component.assign(:custom_flag, :kept)
 
-    refreshed = AshSDUI.LiveResource.Runtime.refresh_socket(FeedLive, selected, %{"binding" => "collection"})
+    refreshed =
+      AshSDUI.LiveResource.Runtime.refresh_socket(FeedLive, selected, %{"binding" => "collection"})
 
     assert refreshed.assigns.custom_flag == :kept
     assert refreshed.assigns.ash_sdui_state.selected == ["feed-1"]

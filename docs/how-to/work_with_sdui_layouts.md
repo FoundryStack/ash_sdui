@@ -37,6 +37,9 @@ root =
   )
 ```
 
+For deeper nested composition patterns, see
+[How to Build Nested Layouts](build_nested_layouts.md).
+
 ## Register a code-authored layout
 
 Register a named layout when the tree should be available by name in code.

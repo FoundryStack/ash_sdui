@@ -88,7 +88,9 @@ Use resource metadata as the source of truth:
 - `ui_binding/2`
 
 Generated forms should use `widget:` when a field should render `:textarea`,
-`:email`, or another non-default input.
+`:email`, `:select`, `:multiselect`, or another non-default input. Relationship
+selectors may also declare `relationship:`, `option_label:`, `option_value:`,
+`prompt:`, and `read_action:`.
 
 ## Binding source families
 

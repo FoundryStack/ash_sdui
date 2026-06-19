@@ -78,6 +78,11 @@ defmodule AshSDUI.Resource.UiField do
     :hidden,
     :order,
     :widget,
+    :relationship,
+    :option_label,
+    :option_value,
+    :prompt,
+    :read_action,
     :field_component,
     :show?,
     :index?,
@@ -98,7 +103,20 @@ defmodule AshSDUI.Resource.UiField do
           icon: String.t() | nil,
           hidden: boolean,
           order: non_neg_integer,
-          widget: :text_input | :textarea | :email | :checkbox | :datetime | nil,
+          widget:
+            :text_input
+            | :textarea
+            | :email
+            | :checkbox
+            | :datetime
+            | :select
+            | :multiselect
+            | nil,
+          relationship: atom | nil,
+          option_label: atom | nil,
+          option_value: atom | nil,
+          prompt: String.t() | nil,
+          read_action: atom | nil,
           field_component: module | nil,
           show?: boolean,
           index?: boolean,

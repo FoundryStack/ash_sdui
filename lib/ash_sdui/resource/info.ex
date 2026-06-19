@@ -55,6 +55,13 @@ defmodule AshSDUI.Resource.Info do
     |> Enum.filter(&is_struct(&1, AshSDUI.Resource.UiField))
   end
 
+  @doc "Reads a named `ui_field` entity from the sdui block."
+  def ui_field(resource, name) do
+    resource
+    |> ui_fields()
+    |> Enum.find(&(&1.name == name))
+  end
+
   @doc "Reads all `ui_binding` entities from the sdui block, or []."
   def ui_bindings(resource) do
     (Spark.Dsl.Extension.get_entities(resource, [:sdui]) || [])

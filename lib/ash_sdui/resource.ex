@@ -114,8 +114,29 @@ defmodule AshSDUI.Resource do
       icon: [type: :string, doc: "Icon name or identifier"],
       hidden: [type: :boolean, default: false, doc: "Whether to hide this field by default"],
       widget: [
-        type: {:one_of, [:text_input, :textarea, :email, :checkbox, :datetime]},
+        type:
+          {:one_of, [:text_input, :textarea, :email, :checkbox, :datetime, :select, :multiselect]},
         doc: "Preferred form widget for generated forms"
+      ],
+      relationship: [
+        type: :atom,
+        doc: "Relationship name backing a generated relationship selector"
+      ],
+      option_label: [
+        type: :atom,
+        doc: "Destination attribute used for relationship selector option labels"
+      ],
+      option_value: [
+        type: :atom,
+        doc: "Destination attribute used for relationship selector option values"
+      ],
+      prompt: [
+        type: :string,
+        doc: "Placeholder prompt for generated single-select relationship inputs"
+      ],
+      read_action: [
+        type: :atom,
+        doc: "Read action used to load relationship selector options"
       ],
       field_component: [
         type: :atom,

@@ -12,7 +12,14 @@ defmodule AshSDUI.LiveResource.Runtime do
   alias AshSDUI.Runtime.State, as: RuntimeState
   alias AshSDUI.View
 
-  @view_opt_keys [:recipe, :variant_resolvers, :field_overrides, :intent_overrides, :recipe_overrides, :assigns]
+  @view_opt_keys [
+    :recipe,
+    :variant_resolvers,
+    :field_overrides,
+    :intent_overrides,
+    :recipe_overrides,
+    :assigns
+  ]
 
   def mount(owner, ui, mode, opts, params, session, socket) do
     run(owner, ui, mode, opts, params, session, socket, include_ui?: true)
@@ -51,7 +58,14 @@ defmodule AshSDUI.LiveResource.Runtime do
         primary_record: BindingSet.primary_record(view, bindings)
       })
 
-    %{view | state: %{state | assigns: state_assigns, refresh: RuntimeState.refresh_snapshot(bindings, state)}}
+    %{
+      view
+      | state: %{
+          state
+          | assigns: state_assigns,
+            refresh: RuntimeState.refresh_snapshot(bindings, state)
+        }
+    }
   end
 
   def binding_load_context(%View{} = view, opts, params, bindings \\ nil) do
@@ -163,7 +177,10 @@ defmodule AshSDUI.LiveResource.Runtime do
 
   def ash_opts(resource, context, opts) do
     []
-    |> Normalize.maybe_put_keyword(:domain, Keyword.get(opts, :domain) || resource_domain(resource))
+    |> Normalize.maybe_put_keyword(
+      :domain,
+      Keyword.get(opts, :domain) || resource_domain(resource)
+    )
     |> Normalize.maybe_put_keyword(:actor, context.actor)
     |> Normalize.maybe_put_keyword(:tenant, context.tenant)
   end
@@ -187,6 +204,7 @@ defmodule AshSDUI.LiveResource.Runtime do
     with {:ok, view} <- View.resolve(ui, mode, view_opts),
          {:ok, bindings} <- load_bindings(view, opts, params),
          runtime_view = enrich_view(view, bindings),
+         {:ok, runtime_view} <- hydrate_form_fields(runtime_view, opts),
          {:ok, socket} <- sync_socket(socket, owner, mode, params, runtime_view, bindings, opts) do
       socket =
         socket
@@ -238,7 +256,8 @@ defmodule AshSDUI.LiveResource.Runtime do
   end
 
   defp data_assigns(%View{mode: :index} = view, bindings, _opts, _params) do
-    {:ok, %{records: BindingSet.primary_collection(view, bindings) || [], subject: nil, form: nil}}
+    {:ok,
+     %{records: BindingSet.primary_collection(view, bindings) || [], subject: nil, form: nil}}
   end
 
   defp data_assigns(%View{mode: :show} = view, bindings, _opts, _params) do
@@ -248,15 +267,22 @@ defmodule AshSDUI.LiveResource.Runtime do
     end
   end
 
-  defp data_assigns(%View{mode: mode} = view, bindings, opts, params) when mode in [:new, :edit] do
+  defp data_assigns(%View{mode: mode} = view, bindings, opts, params)
+       when mode in [:new, :edit] do
     with {:ok, %{form: form, subject: subject}} <- build_form(view, bindings, opts, params) do
       {:ok, %{records: nil, subject: subject, form: Phoenix.Component.to_form(form)}}
     end
   end
 
-  defp data_assigns(_view, _bindings, _opts, _params), do: {:ok, %{records: nil, subject: nil, form: nil}}
+  defp data_assigns(_view, _bindings, _opts, _params),
+    do: {:ok, %{records: nil, subject: nil, form: nil}}
 
-  defp maybe_assign_layout(socket, %View{assigns: %{layout: :sdui}} = view, bindings, data_assigns) do
+  defp maybe_assign_layout(
+         socket,
+         %View{assigns: %{layout: :sdui}} = view,
+         bindings,
+         data_assigns
+       ) do
     layout_opts =
       []
       |> Keyword.put(:bindings, bindings)
@@ -281,7 +307,11 @@ defmodule AshSDUI.LiveResource.Runtime do
       ash_phoenix_form!().for_create(
         view.resource,
         view.action,
-        ash_opts(view.resource, view.context, opts) ++ [as: form_name(view.resource)]
+        ash_opts(view.resource, view.context, opts) ++
+          [
+            as: form_name(view.resource),
+            prepare_params: &AshSDUI.Form.prepare_params(&1, view.fields)
+          ]
       )
 
     {:ok, %{form: form, subject: nil}}
@@ -291,11 +321,18 @@ defmodule AshSDUI.LiveResource.Runtime do
 
   defp build_form(%View{mode: :edit} = view, bindings, opts, %{"id" => id}) do
     with {:ok, subject} <- resolve_edit_subject(view, bindings, opts, id) do
+      params = AshSDUI.Form.initial_params(subject, view.fields)
+
       form =
         ash_phoenix_form!().for_update(
           subject,
           view.action,
-          ash_opts(view.resource, view.context, opts) ++ [as: form_name(view.resource)]
+          ash_opts(view.resource, view.context, opts) ++
+            [
+              as: form_name(view.resource),
+              params: params,
+              prepare_params: &AshSDUI.Form.prepare_params(&1, view.fields)
+            ]
         )
 
       {:ok, %{form: form, subject: subject}}
@@ -308,6 +345,44 @@ defmodule AshSDUI.LiveResource.Runtime do
     case BindingSet.primary_record(view, bindings) do
       nil -> Ash.get(view.resource, id, ash_opts(view.resource, view.context, opts))
       subject -> {:ok, subject}
+    end
+    |> case do
+      {:ok, subject} -> load_relationship_values(subject, view, opts)
+      error -> error
+    end
+  end
+
+  defp hydrate_form_fields(%View{mode: mode} = view, opts) when mode in [:new, :edit] do
+    hydrated_fields =
+      AshSDUI.Form.hydrate(
+        view.ui,
+        view.action,
+        view.fields,
+        domain: root_domain(view.resource, opts),
+        actor: view.context.actor,
+        tenant: view.context.tenant
+      )
+
+    {:ok, %{view | fields: hydrated_fields}}
+  rescue
+    error -> {:error, error}
+  end
+
+  defp hydrate_form_fields(view, _opts), do: {:ok, view}
+
+  defp load_relationship_values(subject, view, opts) do
+    loads =
+      view.fields
+      |> Enum.filter(&(&1.input_source == :argument && &1.relationship))
+      |> Enum.map(& &1.relationship)
+      |> Enum.uniq()
+
+    case loads do
+      [] ->
+        {:ok, subject}
+
+      _ ->
+        Ash.load(subject, loads, ash_opts(view.resource, view.context, opts))
     end
   end
 
@@ -324,7 +399,10 @@ defmodule AshSDUI.LiveResource.Runtime do
         refreshed
         |> maybe_put_flash(:info, refresh_message(params))
         |> update_runtime_state(fn state ->
-          %{state | refresh: Map.put(state.refresh || %{}, :last_refreshed_at, DateTime.utc_now())}
+          %{
+            state
+            | refresh: Map.put(state.refresh || %{}, :last_refreshed_at, DateTime.utc_now())
+          }
         end)
 
       {:error, _reason} ->

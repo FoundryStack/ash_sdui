@@ -6,6 +6,7 @@ defmodule AshSDUI.ResourceExtensionTest do
   alias AshSDUI.TestFixtures.ResourceExtension.ActionDefaults
   alias AshSDUI.TestFixtures.ResourceExtension.AttrDefaults
   alias AshSDUI.TestFixtures.ResourceExtension.AttrLabelKey
+  alias AshSDUI.TestFixtures.RelationshipArticleUI
   alias AshSDUI.TestFixtures.ResourceExtension.AttrWidget
   alias AshSDUI.TestFixtures.ResourceExtension.Basic
   alias AshSDUI.TestFixtures.ResourceExtension.DefaultDomainResource
@@ -71,6 +72,15 @@ defmodule AshSDUI.ResourceExtensionTest do
     test "ui_field accepts widget metadata" do
       [attr] = Info.ui_fields(AttrWidget)
       assert attr.widget == :textarea
+    end
+
+    test "ui_field accepts relationship selector metadata" do
+      author = Info.ui_field(RelationshipArticleUI, :author_id)
+      cover = Info.ui_field(RelationshipArticleUI, :cover_id)
+
+      assert author.widget == nil
+      assert cover.relationship == :cover
+      assert cover.option_label == :title
     end
 
     # Note: Verifier test skipped - defmodule suppresses verification errors in tests
