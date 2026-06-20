@@ -59,7 +59,7 @@ grounded comparison with demo-backed LOC ranges and adoption guidance.
 ```elixir
 def deps do
   [
-    {:ash_sdui, "~> 0.1"},
+    {:ash_sdui, "~> 0.2"},
     {:phoenix_live_view, "~> 1"}
   ]
 end
