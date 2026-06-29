@@ -22,6 +22,10 @@ This is why the package can reuse the same runtime-aware components across
 different authoring styles. The important thing is not how the screen was
 authored, but that it can provide the same runtime contract at render time.
 
+That shared contract also carries the baseline UX story: immediate loading
+feedback, operation lifecycle tracking, and stale-data fallback live in the
+same runtime model as views, bindings, and selection state.
+
 ## Why the runtime is split across modules
 
 The package keeps separate responsibilities on purpose.
@@ -49,6 +53,10 @@ while `View` and `Binding` own normalization. That split makes it possible to
 grow runtime behavior without collapsing the whole system into LiveView-specific
 callbacks.
 
+That is what lets the package add UX behavior centrally. Pending actions,
+optimistic bookkeeping, runtime banners, and offline recovery do not need to be
+re-invented at each generated screen boundary.
+
 ## Node-scoped runtime
 
 Layout nodes can opt into small slices of the runtime with `binding`, `refresh`,
@@ -69,6 +77,9 @@ product-facing runtime patterns, not just admin scaffolding.
 
 This is also why Storybook and the demo app matter. They are proof that the
 runtime abstractions hold up outside the narrowest generated path.
+
+The package should prove that generated surfaces can stay responsive during actions
+and remain readable when live refreshes fail, not just that they can render fields and lists.
 
 ## What is intentionally deferred
 

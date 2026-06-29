@@ -77,6 +77,14 @@ Definitions:
 - `workflow`: workflow state for view-local transitions
 - `assigns`: extra runtime state outside the shared contract
 
+Best-practice reading:
+
+- `loading` remains a compatibility surface for simple loading flags
+- `pending` is the primary operation lifecycle surface for new runtime-aware UI
+- `optimistic` is for best-effort immediate feedback and rollback bookkeeping
+- `offline` means the current screen is rendering the last good state after a refresh failure
+- `errors` should let the UI explain failures without forcing a blank or remounted screen
+
 ## `bindings`
 
 `ui_binding` defines named data sources for a view.
@@ -196,6 +204,13 @@ Current responsibilities:
 - host query, refresh, select, workflow, and save event surfaces
 - dispatch normalized intents
 - render stock recipes or SDUI layout recipes through the same runtime contract
+
+Best-practice expectation:
+
+Generated and semi-generated screens should get immediate action feedback from
+the runtime host by default. Reach for custom LiveView orchestration only when
+the interaction model is genuinely more bespoke than the shared contract can
+describe.
 
 ## Layout contract
 

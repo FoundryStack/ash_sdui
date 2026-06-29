@@ -188,6 +188,14 @@ Shared runtime values:
 - `workflow`
 - `assigns`
 
+`AshSDUI.LiveResource` treats several of those fields as part of the default UX
+contract, not as app-managed bookkeeping. In particular:
+
+- `pending` tracks in-flight saves, deletes, refreshes, and intent dispatches
+- `optimistic` stores best-effort optimistic payload metadata per operation
+- `offline` marks stale-data fallback when a refresh fails after first render
+- `errors` keeps the latest runtime failures available to the rendered surface
+
 Node-level runtime metadata:
 
 - `binding`

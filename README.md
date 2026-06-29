@@ -46,6 +46,7 @@ grounded comparison with demo-backed LOC ranges and adoption guidance.
 
 - Metadata-driven generated screens through `AshSDUI.LiveResource`
 - A shared runtime contract for generated views and SDUI layouts: `view`, `bindings`, `state`, and `context`
+- Built-in UX runtime behavior for pending actions, optimistic feedback, stale-data fallback, and inline runtime errors
 - Layout authoring with `AshSDUI.Layout.Builder` plus persisted layouts through `AshSDUI.Layout`
 - Ephemeral runtime layouts through `AshSDUI.LiveScreen.assign_layout/3`
 - Metadata-driven forms and actions from `ui_field`, `ui_nested_form`, `ui_attribute`, and `ui_intent`
@@ -126,11 +127,29 @@ This gives you:
 - a generated form screen at `/posts/new`
 - form widgets driven by `ui_field` metadata
 - action labels and targets driven by `ui_intent` metadata
+- built-in pending-state feedback for form submits and intent dispatch
 - room to add relationship-aware widgets such as generated selects without
   replacing the generated host
 
 Prefer this path before stepping up to custom recipes or hand-authored
 LiveViews.
+
+## Runtime UX defaults
+
+`AshSDUI.LiveResource` does more than resolve views and render them. It is also
+the default UX runtime host for generated and semi-generated screens.
+
+Out of the box it now tracks:
+
+- pending operations for intents, saves, deletes, and refreshes
+- optimistic runtime metadata for in-flight work
+- stale-data fallback when a live refresh fails after initial load
+- last-known runtime errors so the screen can stay mounted and explain what happened
+
+That means generated screens can react immediately to user actions without each
+LiveView re-implementing its own loading flags, banner state, or rollback path.
+When you need to customize behavior, prefer metadata such as `loading_when` and
+`refreshes` before adding bespoke event orchestration.
 
 If a generated form should let the user pick an existing related record, keep
 that in metadata too:

@@ -17,6 +17,11 @@ recipe, which still keeps the screen metadata-first while letting the page shell
 come from a layout tree. Only after those layers stop fitting should a screen
 move to a custom `render/1` or a fully custom LiveView.
 
+That ordering matters for UX behavior too. The generated host carries
+default pending-state tracking, optimistic feedback bookkeeping, and stale-data
+fallback. Staying higher on the ladder means you inherit those runtime
+behaviors instead of rebuilding them screen by screen.
+
 ## Why metadata is the source of truth
 
 The package prefers metadata because duplicated UI declarations drift. Labels,
@@ -26,6 +31,10 @@ modules, form components, LiveViews, and Storybook stories.
 By keeping `ui_field` and `ui_intent` authoritative, AshSDUI can drive
 generated forms, actions, and proof surfaces from one place. This makes authoring
 smaller and safer for humans and agents.
+
+It also keeps UX reaction metadata close to the thing it belongs to. Intent
+rules such as `loading_when` and `refreshes` remain inspectable in metadata
+instead of disappearing into one-off LiveView callbacks.
 
 ## The three layout paths
 

@@ -28,6 +28,7 @@ AshSDUI earns its keep when several screens share the same resource truths:
 - query, sort, filter, and pagination behavior
 - relationship selectors and nested forms
 - live bindings and refresh rules
+- built-in UX feedback for pending actions and stale-data recovery
 - layout structure that can be generated, composed, or persisted
 - server-driven variants for different actors, tenants, audiences, devices, or runtime states
 
@@ -63,6 +64,9 @@ The main server-side decision points are:
 
 This gives you several levels of dynamism without forcing every component to
 know the entire application state.
+
+A screen can show action progress, keep rendering its last good state after a failed refresh,
+and expose runtime failures without each page inventing its own state machine first.
 
 Use `context` when the same screen should resolve differently for different
 groups:
@@ -178,6 +182,7 @@ Agents do better when:
 
 - labels, widgets, and action targets live in one metadata surface
 - the runtime host is already implemented
+- loading, pending, and stale-data behavior already lives in the runtime host
 - form fields come from introspection instead of hand-maintained lists
 - layout trees can be built with a constrained builder API
 

@@ -9,6 +9,7 @@ runtime model with:
 - refreshable and subscribed bindings
 - streaming collection updates
 - selection and workflow state
+- pending-action feedback, stale-data fallback, and runtime error surfaces
 - hybrid layouts with node-scoped runtime metadata
 
 Treat the matrix below as the acceptance map for promoted features. If a public
@@ -28,6 +29,7 @@ This demo is a public API tour for `ash_sdui`. Each promoted feature should have
 | Query lifecycle | `/posts/generated` | `/storybook/components/post_ui_filtered` | `SduiDemoWeb.Live.BlogLiveTest` | `AshSDUI.Query`, query params, sort, pagination, reset |
 | Live collection bindings | `/live/feed` | `/storybook/components/stream_list` | `SduiDemoWeb.Live.LiveRuntimeTest` | `AshSDUI.Binding`, `AshSDUI.Components.StreamList`, PubSub-backed append/merge/remove updates |
 | Refreshable runtime panels | `/live/metrics` | `/storybook/components/metric_grid` | `SduiDemoWeb.Live.LiveRuntimeTest` | `AshSDUI.View.State`, `AshSDUI.Intent`, `AshSDUI.Components.MetricGrid`, `AshSDUI.Components.ActivityFeed` |
+| Runtime UX feedback | `/posts/generated`, `/live/metrics`, `/live/feed` | `/storybook/components/post_ui`, `/storybook/components/stream_list` | `AshSDUI.ComponentsTest`, `AshSDUI.LiveResourceTest` | `AshSDUI.View.State.pending`, `optimistic`, `offline`, `errors`, built-in runtime banners and loading states |
 | Selection-aware intents | `/live/selection` | `/storybook/components/selection_bar` | `SduiDemoWeb.Live.LiveRuntimeTest` | `AshSDUI.View.State.selected`, `AshSDUI.Components.SelectionBar`, generic `intent` event surface |
 | Workflow state | `/live/workflow` | `/storybook/components/status_badge` | `SduiDemoWeb.Live.LiveRuntimeTest` | `AshSDUI.View.State.workflow`, `AshSDUI.Components.StatusBadge`, workflow-targeted intents |
 | Hybrid live layout | `/live/hybrid` | `/storybook/layouts/live_hybrid_layout` | `SduiDemoWeb.Live.LiveRuntimeTest` | `AshSDUI.LiveScreen.assign_layout/3`, node `binding`/`state_key`/`variant` metadata, `AshSDUI.Components.SDUIRoot` |
