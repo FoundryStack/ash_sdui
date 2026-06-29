@@ -33,11 +33,17 @@ defmodule SduiDemoWeb.Components.Layouts.DemoPageLayout do
           </div>
 
           <div class="mt-8 flex flex-wrap gap-3">
-            <a href="/posts" class="btn btn-primary btn-lg">Open the blog</a>
-            <a href="/posts/generated" class="btn btn-outline btn-lg">Open generated index</a>
-            <a href="/layouts/manage" class="btn btn-outline btn-lg">Open layout tour</a>
-            <a href="/posts/new" class="btn btn-outline btn-lg">Create a post</a>
-            <a href="/storybook" class="btn btn-ghost btn-lg">Browse Storybook</a>
+            <.link navigate="/posts" class="btn btn-primary btn-lg">Open the blog</.link>
+            <.link navigate="/posts/generated" class="btn btn-outline btn-lg">
+              Open generated index
+            </.link>
+            <.link navigate="/layouts/manage" class="btn btn-outline btn-lg">
+              Open layout tour
+            </.link>
+            <.link navigate="/posts/new" class="btn btn-outline btn-lg">
+              Create a post
+            </.link>
+            <.link navigate="/storybook" class="btn btn-ghost btn-lg">Browse Storybook</.link>
           </div>
         </div>
 
@@ -126,10 +132,12 @@ defmodule SduiDemoWeb.Components.Layouts.DemoPageLayout do
                   <p>{showcase.api}</p>
                 </div>
                 <div class="flex flex-wrap gap-3">
-                  <a href={showcase.path} class="btn btn-primary btn-sm">{showcase.cta}</a>
-                  <a href={showcase.secondary_path} class="btn btn-outline btn-sm">
+                  <.link navigate={showcase.path} class="btn btn-primary btn-sm">
+                    {showcase.cta}
+                  </.link>
+                  <.link navigate={showcase.secondary_path} class="btn btn-outline btn-sm">
                     {showcase.secondary_cta}
-                  </a>
+                  </.link>
                 </div>
               </div>
             </article>

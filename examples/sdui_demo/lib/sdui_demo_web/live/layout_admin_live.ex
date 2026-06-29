@@ -85,7 +85,9 @@ defmodule SduiDemoWeb.Live.LayoutAdminLive do
               <button phx-click="register_code_layout" class="btn btn-primary btn-sm">
                 Register code layout
               </button>
-              <a href="/layouts/code" class="btn btn-outline btn-sm">Open code layout route</a>
+              <.link navigate="/layouts/code" class="btn btn-outline btn-sm">
+                Open code layout route
+              </.link>
             </div>
           </div>
         </section>
@@ -128,7 +130,9 @@ defmodule SduiDemoWeb.Live.LayoutAdminLive do
               <button phx-click="publish_persisted_layout" class="btn btn-success btn-sm">
                 Publish
               </button>
-              <a href="/layouts/persisted" class="btn btn-outline btn-sm">Open persisted route</a>
+              <.link navigate="/layouts/persisted" class="btn btn-outline btn-sm">
+                Open persisted route
+              </.link>
             </div>
           </div>
         </section>
@@ -136,13 +140,15 @@ defmodule SduiDemoWeb.Live.LayoutAdminLive do
 
       <section class="rounded-box border border-base-300 bg-base-100 p-6 shadow-sm">
         <div class="flex flex-wrap gap-3">
-          <a href="/layouts/raw-tree" class="btn btn-ghost btn-sm">Open raw tree route</a>
-          <a href="/storybook/layouts/raw_tree_showcase" class="btn btn-ghost btn-sm">
+          <.link navigate="/layouts/raw-tree" class="btn btn-ghost btn-sm">
+            Open raw tree route
+          </.link>
+          <.link navigate="/storybook/layouts/raw_tree_showcase" class="btn btn-ghost btn-sm">
             Open raw tree story
-          </a>
-          <a href="/storybook/layouts/persisted_layout_showcase" class="btn btn-ghost btn-sm">
+          </.link>
+          <.link navigate="/storybook/layouts/persisted_layout_showcase" class="btn btn-ghost btn-sm">
             Open persisted layout story
-          </a>
+          </.link>
         </div>
       </section>
     </div>

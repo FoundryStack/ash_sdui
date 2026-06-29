@@ -45,6 +45,7 @@ defmodule SduiDemoWeb.Components.ResourceActions do
     Map.put_new_lazy(override, :target, fn ->
       case override[:kind] do
         :link -> {:navigate, override[:to]}
+        :patch -> {:patch, override[:to]}
         :event -> {:event, override[:event]}
         :submit -> {:ash_action, override[:event] || override[:name]}
         _ -> nil

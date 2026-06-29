@@ -24,7 +24,7 @@ defmodule SduiDemoWeb.Components.Layouts.PostFormPageLayout do
     ~H"""
     <div class="mx-auto max-w-3xl space-y-6">
       <div class="space-y-3">
-        <a href="/posts" class="btn btn-ghost btn-sm">Back to journal</a>
+        <.link navigate="/posts" class="btn btn-ghost btn-sm">Back to journal</.link>
         <div class="space-y-2">
           <h1 class="text-3xl font-semibold text-base-content">{@page_title}</h1>
           <p class="max-w-2xl text-base-content/65">
@@ -78,7 +78,7 @@ defmodule SduiDemoWeb.Components.Layouts.PostFormPageLayout do
             </:extra_fields>
             <:footer>
               <div class="flex justify-end gap-3 pt-2">
-                <a href="/posts" class="btn btn-ghost">Cancel</a>
+                <.link navigate="/posts" class="btn btn-ghost">Cancel</.link>
                 <button type="submit" class="btn btn-primary">
                   {if @live_action == :new, do: "Create Post", else: "Save Changes"}
                 </button>

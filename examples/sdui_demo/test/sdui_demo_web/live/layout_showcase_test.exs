@@ -52,6 +52,7 @@ defmodule SduiDemoWeb.Live.LayoutShowcaseTest do
     assert html =~ "Register code layout"
     assert html =~ "Save draft"
     assert html =~ "Publish"
+    assert html =~ ~s(data-phx-link="redirect")
 
     view
     |> element("button[phx-click='register_code_layout']")

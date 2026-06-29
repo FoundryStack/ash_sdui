@@ -26,6 +26,7 @@ defmodule SduiDemoWeb.Live.DemoLiveTest do
     test "renders navigation links to showcase routes", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
+      assert html =~ ~s(data-phx-link="redirect")
       assert html =~ "/posts"
       assert html =~ "/posts/generated"
       assert html =~ "/live/hybrid"

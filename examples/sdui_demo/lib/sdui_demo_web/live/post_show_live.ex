@@ -144,40 +144,42 @@ defmodule SduiDemoWeb.Live.PostShowLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="space-y-8">
-      <.post_show_action_bar post={@post} layout_mode={@layout_mode} />
+    <div class="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
+      <div class="space-y-8">
+        <.post_show_action_bar post={@post} layout_mode={@layout_mode} />
 
-      <.sdui_root tree={@__sdui_tree__} />
+        <.sdui_root tree={@__sdui_tree__} />
 
-      <section class="space-y-4">
-        <div class="space-y-1">
-          <h2 class="text-2xl font-semibold text-base-content">Add a comment</h2>
-          <p class="text-sm text-base-content/65">
-            The show page stays custom on purpose, which makes it a good example of how generated and hand-shaped flows can live together.
-          </p>
-        </div>
-        <div class="card max-w-2xl border border-base-300 bg-base-100 shadow-sm">
-          <div class="card-body">
-            <form phx-change="validate_comment" phx-submit="submit_comment" class="space-y-4">
-              <fieldset class="fieldset">
-                <legend class="fieldset-legend">Your comment</legend>
-                <textarea
-                  name={@comment_form[:body].name}
-                  placeholder="Write a comment..."
-                  class={"textarea textarea-bordered w-full h-28 #{if @comment_form[:body].errors != [], do: "textarea-error"}"}
-                  phx-debounce="300"
-                ><%= Phoenix.HTML.Form.input_value(@comment_form, :body) %></textarea>
-                <%= for error <- @comment_form[:body].errors do %>
-                  <p class="label text-error text-xs">{translate_error(error)}</p>
-                <% end %>
-              </fieldset>
-              <div class="flex justify-end">
-                <button type="submit" class="btn btn-primary btn-sm">Post Comment</button>
-              </div>
-            </form>
+        <section class="space-y-4">
+          <div class="space-y-1">
+            <h2 class="text-2xl font-semibold text-base-content">Add a comment</h2>
+            <p class="text-sm text-base-content/65">
+              The show page stays custom on purpose, which makes it a good example of how generated and hand-shaped flows can live together.
+            </p>
           </div>
-        </div>
-      </section>
+          <div class="card max-w-2xl border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body">
+              <form phx-change="validate_comment" phx-submit="submit_comment" class="space-y-4">
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">Your comment</legend>
+                  <textarea
+                    name={@comment_form[:body].name}
+                    placeholder="Write a comment..."
+                    class={"textarea textarea-bordered w-full h-28 #{if @comment_form[:body].errors != [], do: "textarea-error"}"}
+                    phx-debounce="300"
+                  ><%= Phoenix.HTML.Form.input_value(@comment_form, :body) %></textarea>
+                  <%= for error <- @comment_form[:body].errors do %>
+                    <p class="label text-error text-xs">{translate_error(error)}</p>
+                  <% end %>
+                </fieldset>
+                <div class="flex justify-end">
+                  <button type="submit" class="btn btn-primary btn-sm">Post Comment</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
     """
   end

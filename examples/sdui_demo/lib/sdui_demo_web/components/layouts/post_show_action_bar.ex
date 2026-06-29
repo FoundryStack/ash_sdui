@@ -41,7 +41,7 @@ defmodule SduiDemoWeb.Components.Layouts.PostShowActionBar do
     ~H"""
     <div class="space-y-5">
       <div class="flex flex-wrap items-center gap-3">
-        <a href="/posts" class="btn btn-ghost btn-sm">Back to journal</a>
+        <.link navigate="/posts" class="btn btn-ghost btn-sm">Back to journal</.link>
         <div class="flex-1" />
         <.resource_actions
           resource={SduiDemo.UI.Resources.PostUI}

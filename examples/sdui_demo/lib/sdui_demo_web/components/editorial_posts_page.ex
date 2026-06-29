@@ -47,8 +47,8 @@ defmodule SduiDemoWeb.Components.EditorialPostsPage do
             </p>
           </div>
           <div class="flex flex-wrap gap-3">
-            <a href="/posts/new" class="btn btn-primary">{@create_label}</a>
-            <a href="/storybook" class="btn btn-outline">Storybook</a>
+            <.link navigate="/posts/new" class="btn btn-primary">{@create_label}</.link>
+            <.link navigate="/storybook" class="btn btn-outline">Storybook</.link>
           </div>
         </div>
       </header>
@@ -69,15 +69,21 @@ defmodule SduiDemoWeb.Components.EditorialPostsPage do
                 </div>
                 <div class="space-y-3">
                   <h3 class="text-4xl font-semibold leading-tight text-base-content">
-                    <a href={@featured.read_path} class="hover:text-primary">{@featured.title}</a>
+                    <.link navigate={@featured.read_path} class="hover:text-primary">
+                      {@featured.title}
+                    </.link>
                   </h3>
                   <p class="max-w-3xl text-base leading-8 text-base-content/75">
                     {@featured.excerpt}
                   </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                  <a href={@featured.read_path} class="btn btn-primary btn-sm">Read</a>
-                  <a href={@featured.edit_path} class="btn btn-ghost btn-sm">Edit</a>
+                  <.link navigate={@featured.read_path} class="btn btn-primary btn-sm">
+                    Read
+                  </.link>
+                  <.link navigate={@featured.edit_path} class="btn btn-ghost btn-sm">
+                    Edit
+                  </.link>
                 </div>
               </article>
             </section>
@@ -98,7 +104,7 @@ defmodule SduiDemoWeb.Components.EditorialPostsPage do
                   {@empty_body}
                 </p>
                 <div class="mt-6">
-                  <a href="/posts/new" class="btn btn-primary">{@create_label}</a>
+                  <.link navigate="/posts/new" class="btn btn-primary">{@create_label}</.link>
                 </div>
               </div>
             <% else %>
@@ -112,15 +118,21 @@ defmodule SduiDemoWeb.Components.EditorialPostsPage do
                     </div>
                     <div class="space-y-3">
                       <h3 class="text-3xl font-semibold leading-tight text-base-content">
-                        <a href={post.read_path} class="hover:text-primary">{post.title}</a>
+                        <.link navigate={post.read_path} class="hover:text-primary">
+                          {post.title}
+                        </.link>
                       </h3>
                       <p class="max-w-3xl text-base leading-8 text-base-content/72">
                         {post.excerpt}
                       </p>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                      <a href={post.read_path} class="btn btn-primary btn-sm">Read</a>
-                      <a href={post.edit_path} class="btn btn-ghost btn-sm">Edit</a>
+                      <.link navigate={post.read_path} class="btn btn-primary btn-sm">
+                        Read
+                      </.link>
+                      <.link navigate={post.edit_path} class="btn btn-ghost btn-sm">
+                        Edit
+                      </.link>
                       <button
                         type="button"
                         phx-click="delete"
@@ -159,19 +171,6 @@ defmodule SduiDemoWeb.Components.EditorialPostsPage do
                 <span class="font-medium text-base-content">Renderer:</span> `EditorialPostsPage@v1`
               </li>
             </ul>
-          </section>
-
-          <section class="rounded-box border border-base-300 bg-base-100 p-5 shadow-sm">
-            <p class="text-sm font-medium uppercase tracking-[0.18em] text-base-content/55">
-              Quick links
-            </p>
-            <div class="mt-4 flex flex-col gap-2">
-              <a href="/posts/new" class="btn btn-primary btn-sm">Write a post</a>
-              <a href="/posts/generated" class="btn btn-outline btn-sm">Open generated index</a>
-              <a href="/storybook/components/editorial_posts_page" class="btn btn-outline btn-sm">
-                Open this in Storybook
-              </a>
-            </div>
           </section>
         </aside>
       </div>

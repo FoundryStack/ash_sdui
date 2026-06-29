@@ -97,13 +97,24 @@ defmodule AshSDUI.Components.IntentBar do
     ~H"""
     <%= case @kind do %>
       <% :link -> %>
-        <a
-          href={@presentation.to}
-          class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
-          aria-disabled={to_string(not @enabled?)}
-        >
-          {@label}
-        </a>
+        <%= case @intent.target do %>
+          <% {:patch, _} -> %>
+            <.link
+              patch={@presentation.to}
+              class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
+              aria-disabled={to_string(not @enabled?)}
+            >
+              {@label}
+            </.link>
+          <% _ -> %>
+            <.link
+              navigate={@presentation.to}
+              class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
+              aria-disabled={to_string(not @enabled?)}
+            >
+              {@label}
+            </.link>
+        <% end %>
       <% :event -> %>
         <button
           type="button"
