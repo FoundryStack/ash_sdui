@@ -31,6 +31,8 @@ defmodule AshSDUI.Components.StreamList do
       assigns
       |> assign(:items, assigns.items || assigns.bound_value || assigns.records || [])
       |> assign(:refresh_meta, State.refresh_meta(assigns.state, assigns.binding_name))
+      |> assign(:loading?, State.pending_count(assigns.state) > 0)
+      |> assign(:offline?, State.offline?(assigns.state))
 
     ~H"""
     <section class={["space-y-4", @class]} data-testid="stream-list">
@@ -40,6 +42,10 @@ defmodule AshSDUI.Components.StreamList do
           <p class="text-sm text-base-content/60">
             Status: {Map.get(@refresh_meta, :status, :ready)}
           </p>
+          <div :if={@loading? || @offline?} class="mt-2 flex flex-wrap gap-2 text-sm">
+            <span :if={@loading?} class="badge badge-info badge-outline">Syncing</span>
+            <span :if={@offline?} class="badge badge-warning badge-outline">Offline</span>
+          </div>
         </div>
         <p :if={Map.get(@refresh_meta, :refreshed_at)} class="text-sm text-base-content/60">
           Updated {Calendar.strftime(@refresh_meta.refreshed_at, "%H:%M:%S")}
@@ -47,7 +53,16 @@ defmodule AshSDUI.Components.StreamList do
       </div>
 
       <%= if @items == [] do %>
-        <AshSDUI.Components.EmptyState.render title={@empty_title} body={@empty_body} />
+        <%= if @loading? do %>
+          <div class="space-y-3">
+            <div :for={_ <- 1..3} class="rounded-box border border-base-300 bg-base-100 p-4 shadow-sm">
+              <div class="skeleton h-4 w-1/2"></div>
+              <div class="skeleton mt-3 h-3 w-5/6"></div>
+            </div>
+          </div>
+        <% else %>
+          <AshSDUI.Components.EmptyState.render title={@empty_title} body={@empty_body} />
+        <% end %>
       <% else %>
         <div class="space-y-3">
           <article

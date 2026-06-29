@@ -7,6 +7,7 @@ defmodule AshSDUI.Intent do
   """
 
   alias AshSDUI.Context
+  alias AshSDUI.Runtime.State, as: RuntimeState
   alias AshSDUI.Resource.Info
 
   defstruct [
@@ -280,18 +281,20 @@ defmodule AshSDUI.Intent do
   end
 
   defp loading?(intent, state) do
+    normalized_state = normalize_state(state)
+
     case intent.loading_when do
       nil ->
-        false
+        RuntimeState.pending_operation?(normalized_state, intent.name)
 
       {:intent, name} ->
-        Map.get(Map.get(normalize_state(state), :loading, %{}), name, false)
+        RuntimeState.pending_operation?(normalized_state, name)
 
       {:workflow, value} ->
-        get_in(normalize_state(state), [:workflow, :state]) == value
+        get_in(normalized_state, [:workflow, :state]) == value
 
       name when is_atom(name) ->
-        Map.get(Map.get(normalize_state(state), :loading, %{}), name, false)
+        RuntimeState.pending_operation?(normalized_state, name)
 
       value when is_boolean(value) ->
         value

@@ -5,15 +5,37 @@ defmodule AshSDUI.LiveResource.IntentDispatch do
 
   alias AshSDUI.Intent
   alias AshSDUI.LiveResource.Runtime
+  alias AshSDUI.Runtime.State, as: RuntimeState
   alias AshSDUI.View
 
   def dispatch(owner, %{"intent" => intent_name} = params, socket) do
     with {:ok, intent} <- lookup_intent(socket.assigns.ash_sdui_view, intent_name),
          {:ok, command} <- Intent.command(intent, params, intent_runtime(socket, params)) do
-      apply_command(owner, socket, command)
+      socket =
+        update_runtime_state(socket, fn state ->
+          RuntimeState.begin_operation(state, intent.name, %{
+            kind: command.type,
+            target: intent.target,
+            payload: command.payload,
+            optimistic: command.meta
+          })
+        end)
+
+      socket = apply_command(owner, socket, command)
+
+      socket
+      |> update_runtime_state(fn state ->
+        RuntimeState.complete_operation(state, intent.name)
+      end)
     else
-      {:error, _reason} ->
-        put_flash(socket, :error, "Intent could not be executed.")
+      {:error, reason} ->
+        socket
+        |> update_runtime_state(fn state ->
+          RuntimeState.rollback_operation(state, Map.get(params, "intent", :intent), %{
+            reason: reason
+          })
+        end)
+        |> put_flash(:error, "Intent could not be executed.")
     end
   end
 

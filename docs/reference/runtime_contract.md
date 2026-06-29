@@ -55,6 +55,10 @@ Fields:
 - `params`
 - `selected`
 - `loading`
+- `pending`
+- `optimistic`
+- `offline`
+- `errors`
 - `refresh`
 - `workflow`
 - `assigns`
@@ -65,6 +69,10 @@ Definitions:
 - `params`: original or normalized request and event params
 - `selected`: canonical list of selected identifiers
 - `loading`: runtime loading flags keyed by feature or intent name
+- `pending`: structured metadata for in-flight operations and optimistic work
+- `optimistic`: last known optimistic payloads keyed by operation name
+- `offline`: best-effort stale-data flag when the runtime cannot refresh cleanly
+- `errors`: last known runtime errors keyed by operation name
 - `refresh`: per-binding or per-view refresh metadata
 - `workflow`: workflow state for view-local transitions
 - `assigns`: extra runtime state outside the shared contract
@@ -184,6 +192,7 @@ Current responsibilities:
 - mount and refresh runtime state
 - register subscriptions
 - handle binding-level live updates
+- track pending operations, optimistic state, and offline fallback
 - host query, refresh, select, workflow, and save event surfaces
 - dispatch normalized intents
 - render stock recipes or SDUI layout recipes through the same runtime contract

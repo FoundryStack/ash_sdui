@@ -48,7 +48,10 @@ defmodule AshSDUI.LiveResource.Runtime do
   end
 
   def enrich_view(%View{} = view, bindings) do
-    state = view.state || %View.State{}
+    state =
+      (view.state || %View.State{})
+      |> RuntimeState.mark_online()
+      |> RuntimeState.clear_errors()
 
     state_assigns =
       state.assigns
@@ -134,6 +137,7 @@ defmodule AshSDUI.LiveResource.Runtime do
     bindings = Map.put(socket.assigns.ash_sdui_bindings || %{}, binding.name, value)
     view = enrich_view(socket.assigns.ash_sdui_view, bindings)
     state = RuntimeState.mark_binding_refreshed(view.state, binding.name)
+    state = RuntimeState.mark_online(state) |> RuntimeState.clear_errors()
     refreshed_view = %{view | state: state}
 
     socket
@@ -215,14 +219,33 @@ defmodule AshSDUI.LiveResource.Runtime do
       {:ok, socket}
     else
       {:error, reason} ->
-        {:ok,
-         socket
-         |> assign(:ash_sdui_error, reason)
-         |> assign(:ash_sdui_view, nil)
-         |> assign(:ash_sdui_mode, mode)
-         |> assign(:ash_sdui_opts, opts)
-         |> assign(:ash_sdui_session, session)
-         |> assign(:ash_sdui_params, params)}
+        if run_opts[:include_ui?] do
+          {:ok,
+           socket
+           |> assign(:ash_sdui_error, reason)
+           |> assign(:ash_sdui_view, nil)
+           |> assign(:ash_sdui_mode, mode)
+           |> assign(:ash_sdui_opts, opts)
+           |> assign(:ash_sdui_session, session)
+           |> assign(:ash_sdui_params, params)}
+        else
+          stale_state =
+            (socket.assigns[:ash_sdui_state] || %View.State{})
+            |> RuntimeState.mark_offline(reason)
+            |> RuntimeState.record_error(:refresh, reason)
+
+          stale_view =
+            case socket.assigns[:ash_sdui_view] do
+              %View{} = view -> %{view | state: stale_state}
+              _ -> nil
+            end
+
+          {:ok,
+           socket
+           |> assign(:ash_sdui_offline_reason, reason)
+           |> assign(:ash_sdui_state, stale_state)
+           |> assign(:ash_sdui_view, stale_view)}
+        end
     end
   end
 
@@ -406,10 +429,15 @@ defmodule AshSDUI.LiveResource.Runtime do
         refreshed
         |> maybe_put_flash(:info, refresh_message(params))
         |> update_runtime_state(fn state ->
-          %{
-            state
-            | refresh: Map.put(state.refresh || %{}, :last_refreshed_at, DateTime.utc_now())
-          }
+          state
+          |> RuntimeState.mark_online()
+          |> RuntimeState.clear_errors()
+          |> then(fn state ->
+            %{
+              state
+              | refresh: Map.put(state.refresh || %{}, :last_refreshed_at, DateTime.utc_now())
+            }
+          end)
         end)
 
       {:error, _reason} ->

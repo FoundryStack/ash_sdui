@@ -69,6 +69,30 @@ defmodule AshSDUI.RuntimeTest do
     assert State.selected_records(state, [%{id: "alpha"}, %{id: "beta"}]) == [%{id: "alpha"}]
   end
 
+  test "state helpers track pending offline and error metadata" do
+    state =
+      %View.State{}
+      |> State.begin_operation(:save, %{kind: :form, optimistic: %{title: "Draft"}})
+      |> State.record_error(:save, :validation_error)
+      |> State.mark_offline(:disconnected)
+
+    assert State.pending_operation?(state, :save)
+    assert State.pending_count(state) == 1
+    assert State.optimistic_operations(state).save == %{title: "Draft"}
+    assert State.offline?(state)
+    assert State.last_error(state).reason == :validation_error
+
+    cleared =
+      state
+      |> State.complete_operation(:save)
+      |> State.clear_errors()
+      |> State.mark_online()
+
+    refute State.pending_operation?(cleared, :save)
+    refute State.offline?(cleared)
+    assert State.errors(cleared) == %{}
+  end
+
   test "binding canonical source unwraps live wrappers consistently" do
     assert Source.canonical_source({:poll, {:resource, Article}, interval: 5_000}) ==
              {:resource, Article}

@@ -174,6 +174,20 @@ Shared runtime values:
 - `state`
 - `context`
 
+`state` currently carries:
+
+- `query`
+- `params`
+- `selected`
+- `loading`
+- `pending`
+- `optimistic`
+- `offline`
+- `errors`
+- `refresh`
+- `workflow`
+- `assigns`
+
 Node-level runtime metadata:
 
 - `binding`

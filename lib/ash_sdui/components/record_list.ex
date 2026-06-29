@@ -4,6 +4,7 @@ defmodule AshSDUI.Components.RecordList do
   """
 
   use Phoenix.Component
+  alias AshSDUI.Runtime.State
 
   AshSDUI.Registry.register("AshSDUI.RecordList@v1", __MODULE__, %{
     fragment: "",
@@ -28,14 +29,39 @@ defmodule AshSDUI.Components.RecordList do
 
   def render(assigns) do
     query = assigns[:state] && assigns.state.query
+
     assigns = assign(assigns, :query, query)
+    assigns =
+      assigns
+      |> assign(:loading?, State.pending_count(assigns.state) > 0)
+      |> assign(:offline?, State.offline?(assigns.state))
+      |> assign(:column_count, length(assigns.fields) + if(assigns.intents != [], do: 1, else: 0))
 
     ~H"""
     <div class={["space-y-4", @class]}>
+      <div :if={@loading? || @offline?} class="flex flex-wrap gap-2 text-sm">
+        <span :if={@loading?} class="badge badge-info badge-outline">Syncing</span>
+        <span :if={@offline?} class="badge badge-warning badge-outline">Offline</span>
+      </div>
+
       <.query_controls :if={@query} query={@query} />
 
       <%= if Enum.empty?(@records) do %>
-        <AshSDUI.Components.EmptyState.render title={@empty_title} body={@empty_body} />
+        <%= if @loading? do %>
+          <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+            <table class="table">
+              <tbody>
+                <tr :for={_ <- 1..3}>
+                  <td colspan={@column_count}>
+                    <div class="skeleton h-4 w-full"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <AshSDUI.Components.EmptyState.render title={@empty_title} body={@empty_body} />
+        <% end %>
       <% else %>
         <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
         <table class="table">

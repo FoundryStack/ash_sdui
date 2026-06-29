@@ -5,6 +5,7 @@ defmodule AshSDUI.LiveResource.Subscriptions do
 
   alias AshSDUI.Binding
   alias AshSDUI.LiveResource.Runtime
+  alias AshSDUI.Runtime.State, as: RuntimeState
 
   def register(socket, view, opts) do
     specs = Runtime.subscription_specs(view, opts)
@@ -41,8 +42,18 @@ defmodule AshSDUI.LiveResource.Subscriptions do
           |> Runtime.update_binding_runtime(binding, value)
           |> maybe_schedule_poll(binding)
 
-        {:error, _reason} ->
-          put_flash(socket, :error, "Could not refresh #{binding_name}.")
+        {:error, reason} ->
+          state =
+            socket.assigns.ash_sdui_state
+            |> RuntimeState.mark_offline(reason)
+            |> RuntimeState.record_error(binding_name, reason)
+
+          view = %{socket.assigns.ash_sdui_view | state: state}
+
+          socket
+          |> Phoenix.Component.assign(:ash_sdui_state, state)
+          |> Phoenix.Component.assign(:ash_sdui_view, view)
+          |> put_flash(:error, "Could not refresh #{binding_name}.")
       end
     else
       Runtime.refresh_socket(owner, socket, %{})

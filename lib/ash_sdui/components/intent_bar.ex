@@ -109,7 +109,9 @@ defmodule AshSDUI.Components.IntentBar do
           type="button"
           phx-click={@presentation.event}
           phx-value-id={@override[:id] || (@subject && @subject.id)}
+          phx-disable-with={loading_text(@intent, @label)}
           data-confirm={@presentation.confirm}
+          aria-busy={@loading?}
           class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
           disabled={!@enabled?}
         >
@@ -118,6 +120,8 @@ defmodule AshSDUI.Components.IntentBar do
       <% :submit -> %>
         <button
           type="submit"
+          phx-disable-with={loading_text(@intent, @label)}
+          aria-busy={@loading?}
           class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
           disabled={!@enabled?}
         >
@@ -129,7 +133,9 @@ defmodule AshSDUI.Components.IntentBar do
           phx-click="intent"
           phx-value-intent={@intent.name}
           phx-value-id={@override[:id] || (@subject && @subject.id)}
+          phx-disable-with={loading_text(@intent, @label)}
           data-confirm={@presentation.confirm}
+          aria-busy={@loading?}
           class={button_class(Map.get(@intent, :style), @override[:class], @loading?, @enabled?)}
           disabled={!@enabled?}
         >
@@ -163,4 +169,12 @@ defmodule AshSDUI.Components.IntentBar do
       _ -> true
     end
   end
+
+  defp loading_text(%{style: :destructive}, _label), do: "Deleting..."
+  defp loading_text(%{target: {:ash_action, _}}, _label), do: "Saving..."
+  defp loading_text(%{target: {:event, _}}, label), do: "#{label}..."
+  defp loading_text(%{target: {:refresh, _}}, _label), do: "Refreshing..."
+  defp loading_text(%{target: {:select, _}}, _label), do: "Updating..."
+  defp loading_text(%{target: {:workflow, _}}, _label), do: "Updating..."
+  defp loading_text(_intent, label), do: "#{label}..."
 end

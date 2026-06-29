@@ -36,9 +36,139 @@ defmodule AshSDUI.Runtime.State do
     Map.get(normalized_state, normalized_key) || Map.get(normalized_state, state_key)
   end
 
+  @spec pending_operation?(View.State.t() | map | nil, atom | String.t()) :: boolean
+  def pending_operation?(state, operation_name) do
+    normalized = normalize(state)
+    pending = Map.get(normalized, :pending, %{})
+    loading = Map.get(normalized, :loading, %{})
+
+    Map.has_key?(pending, operation_name) || Map.get(loading, operation_name, false)
+  end
+
+  @spec pending_operations(View.State.t() | map | nil) :: map
+  def pending_operations(state), do: Map.get(normalize(state), :pending, %{})
+
+  @spec pending_count(View.State.t() | map | nil) :: non_neg_integer
+  def pending_count(state), do: map_size(pending_operations(state))
+
+  @spec optimistic_operations(View.State.t() | map | nil) :: map
+  def optimistic_operations(state), do: Map.get(normalize(state), :optimistic, %{})
+
+  @spec offline?(View.State.t() | map | nil) :: boolean
+  def offline?(state), do: truthy?(Map.get(normalize(state), :offline))
+
+  @spec errors(View.State.t() | map | nil) :: map
+  def errors(state), do: Map.get(normalize(state), :errors, %{})
+
+  @spec last_error(View.State.t() | map | nil) :: term | nil
+  def last_error(state) do
+    errors(state)
+    |> Enum.max_by(
+      fn {_key, error} ->
+        error
+        |> Map.get(:at, DateTime.from_unix!(0))
+        |> DateTime.to_unix(:millisecond)
+      end,
+      fn -> nil end
+    )
+    |> case do
+      nil -> nil
+      {_key, error} -> error
+    end
+  end
+
   @spec update(View.State.t() | nil, (View.State.t() -> View.State.t())) :: View.State.t()
   def update(nil, fun) when is_function(fun, 1), do: fun.(%View.State{})
   def update(%View.State{} = state, fun) when is_function(fun, 1), do: fun.(state)
+
+  @spec begin_operation(View.State.t() | nil, atom | String.t(), map | keyword | nil) :: View.State.t()
+  def begin_operation(state, name, attrs \\ %{}) do
+    attrs = normalize(attrs)
+
+    update(state, fn state ->
+      now = DateTime.utc_now()
+      loading = Map.put(state.loading || %{}, name, true)
+      pending = Map.put(state.pending || %{}, name, build_operation(name, attrs, now, :pending))
+
+      optimistic =
+        case Map.get(attrs, :optimistic) do
+          nil -> state.optimistic || %{}
+          optimistic_value -> Map.put(state.optimistic || %{}, name, optimistic_value)
+        end
+
+      %{state | loading: loading, pending: pending, optimistic: optimistic, offline: false}
+    end)
+  end
+
+  @spec complete_operation(View.State.t() | nil, atom | String.t(), map | keyword | nil) ::
+          View.State.t()
+  def complete_operation(state, name, _attrs \\ %{}) do
+    update(state, fn state ->
+      pending = Map.delete(state.pending || %{}, name)
+      loading = Map.delete(state.loading || %{}, name)
+      optimistic = Map.delete(state.optimistic || %{}, name)
+      errors = Map.delete(state.errors || %{}, name)
+
+      %{state | loading: loading, pending: pending, optimistic: optimistic, errors: errors}
+    end)
+  end
+
+  @spec rollback_operation(View.State.t() | nil, atom | String.t(), map | keyword | nil) ::
+          View.State.t()
+  def rollback_operation(state, name, attrs \\ %{}) do
+    attrs = normalize(attrs)
+
+    update(state, fn state ->
+      now = DateTime.utc_now()
+      loading = Map.delete(state.loading || %{}, name)
+      pending = Map.delete(state.pending || %{}, name)
+      optimistic = Map.delete(state.optimistic || %{}, name)
+
+      errors =
+        Map.put(state.errors || %{}, name, %{
+          reason: Map.get(attrs, :reason),
+          at: now,
+          status: :rolled_back
+        })
+
+      %{state | loading: loading, pending: pending, optimistic: optimistic, errors: errors}
+    end)
+  end
+
+  @spec record_error(View.State.t() | nil, atom | String.t(), term) :: View.State.t()
+  def record_error(state, name, reason) do
+    update(state, fn state ->
+      now = DateTime.utc_now()
+
+      errors =
+        Map.put(state.errors || %{}, name, %{
+          reason: reason,
+          at: now,
+          status: :failed
+        })
+
+      %{state | errors: errors}
+    end)
+  end
+
+  @spec clear_errors(View.State.t() | nil) :: View.State.t()
+  def clear_errors(state) do
+    update(state, fn state -> %{state | errors: %{}} end)
+  end
+
+  @spec mark_offline(View.State.t() | nil, term | nil) :: View.State.t()
+  def mark_offline(state, reason \\ true) do
+    update(state, fn state ->
+      %{state | offline: reason || true}
+    end)
+  end
+
+  @spec mark_online(View.State.t() | nil) :: View.State.t()
+  def mark_online(state) do
+    update(state, fn state ->
+      %{state | offline: false}
+    end)
+  end
 
   @spec apply_selection(View.State.t() | nil, map) :: View.State.t()
   def apply_selection(state, params) do
@@ -142,4 +272,20 @@ defmodule AshSDUI.Runtime.State do
   end
 
   defp normalize_key(key), do: key
+  defp build_operation(name, attrs, now, status) do
+    %{
+      name: name,
+      kind: Map.get(attrs, :kind),
+      status: status,
+      target: Map.get(attrs, :target),
+      payload: Map.get(attrs, :payload, %{}),
+      optimistic: Map.get(attrs, :optimistic),
+      started_at: now
+    }
+  end
+
+  defp truthy?(nil), do: false
+  defp truthy?(false), do: false
+  defp truthy?(value) when is_list(value), do: value != []
+  defp truthy?(value), do: value != %{}
 end

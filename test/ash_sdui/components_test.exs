@@ -137,6 +137,61 @@ defmodule AshSDUI.ComponentsTest do
     assert output =~ "loading"
   end
 
+  test "intent buttons disable with a loading copy" do
+    rendered =
+      AshSDUI.Components.IntentBar.render(%{
+        ui: Article,
+        subject: %Article{id: "1", title: "Hello"},
+        intents: [
+          %{
+            name: :approve,
+            label: "Approve",
+            target: {:refresh, :view},
+            enabled_when: true
+          }
+        ],
+        __changed__: nil
+      })
+
+    output = html(rendered)
+
+    assert output =~ ~s(phx-disable-with="Refreshing...")
+  end
+
+  test "record list renders sync badges and skeleton rows while empty" do
+    rendered =
+      AshSDUI.Components.RecordList.render(%{
+        records: [],
+        fields: [%{name: :title, label: "Title"}],
+        state: %AshSDUI.View.State{pending: %{refresh: %{status: :pending}}, offline: true},
+        __changed__: nil
+      })
+
+    output = html(rendered)
+
+    assert output =~ "Syncing"
+    assert output =~ "Offline"
+    assert output =~ "skeleton"
+  end
+
+  test "stream list renders sync badges and skeleton rows while empty" do
+    rendered =
+      AshSDUI.Components.StreamList.render(%{
+        title: "Feed",
+        binding_name: :collection,
+        state: %AshSDUI.View.State{pending: %{refresh: %{status: :pending}}, offline: true},
+        records: [],
+        __changed__: nil
+      })
+
+    output = html(rendered)
+
+    assert output =~ "Feed"
+    assert output =~ "Syncing"
+    assert output =~ "Offline"
+    assert output =~ "skeleton"
+  end
+
   test "stream list renders refresh metadata and empty state safely" do
     rendered =
       AshSDUI.Components.StreamList.render(%{

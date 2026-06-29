@@ -131,6 +131,10 @@ defmodule AshSDUI.View do
       params: %{},
       selected: [],
       loading: %{},
+      pending: %{},
+      optimistic: %{},
+      offline: false,
+      errors: %{},
       refresh: %{},
       workflow: %{},
       assigns: %{}
@@ -141,6 +145,10 @@ defmodule AshSDUI.View do
             params: map,
             selected: [term],
             loading: map,
+            pending: map,
+            optimistic: map,
+            offline: boolean | term,
+            errors: map,
             refresh: map,
             workflow: map,
             assigns: map

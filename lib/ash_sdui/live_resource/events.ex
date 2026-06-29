@@ -6,6 +6,7 @@ defmodule AshSDUI.LiveResource.Events do
   alias AshSDUI.LiveResource.IntentDispatch
   alias AshSDUI.LiveResource.QueryPatch
   alias AshSDUI.LiveResource.Runtime
+  alias AshSDUI.Runtime.State, as: RuntimeState
   alias AshSDUI.Query
 
   def handle(_owner, "validate", params, socket) do
@@ -81,6 +82,10 @@ defmodule AshSDUI.LiveResource.Events do
 
   def handle(owner, "save", params, socket) do
     form_name = Runtime.form_name(socket.assigns.ash_sdui_resource)
+    socket =
+      update_runtime_state(socket, fn state ->
+        RuntimeState.begin_operation(state, :save, %{kind: :form})
+      end)
 
     form_params =
       owner.ash_sdui_transform_form_params(
@@ -91,16 +96,32 @@ defmodule AshSDUI.LiveResource.Events do
 
     case ash_phoenix_form!().submit(socket.assigns.form.source, params: form_params) do
       {:ok, record} ->
-        {:noreply, owner.ash_sdui_after_save(record, socket)}
+        socket =
+          owner.ash_sdui_after_save(record, socket)
+          |> update_runtime_state(fn state -> RuntimeState.complete_operation(state, :save) end)
+
+        {:noreply, socket}
 
       {:error, form} ->
-        {:noreply, Phoenix.Component.assign(socket, :form, Phoenix.Component.to_form(form))}
+        socket =
+          socket
+          |> update_runtime_state(fn state ->
+            RuntimeState.rollback_operation(state, :save, %{reason: :validation_error})
+          end)
+          |> Phoenix.Component.assign(:form, Phoenix.Component.to_form(form))
+
+        {:noreply, socket}
     end
   end
 
   def handle(_owner, "delete", %{"id" => id}, socket) do
     resource = socket.assigns.ash_sdui_resource
     view = socket.assigns.ash_sdui_view
+
+    socket =
+      update_runtime_state(socket, fn state ->
+        RuntimeState.begin_operation(state, :delete, %{kind: :resource, target: resource, payload: %{id: id}})
+      end)
 
     with {:ok, record} <-
            Ash.get(
@@ -109,9 +130,23 @@ defmodule AshSDUI.LiveResource.Events do
              Runtime.ash_opts(resource, view.context, socket.assigns.ash_sdui_opts)
            ),
          :ok <- Ash.destroy(record) do
-      {:noreply, socket |> put_flash(:info, "Deleted.") |> reload_index()}
+      socket =
+        socket
+        |> put_flash(:info, "Deleted.")
+        |> reload_index()
+        |> update_runtime_state(fn state -> RuntimeState.complete_operation(state, :delete) end)
+
+      {:noreply, socket}
     else
-      _ -> {:noreply, put_flash(socket, :error, "Could not delete record.")}
+      reason ->
+        socket =
+          socket
+          |> update_runtime_state(fn state ->
+            RuntimeState.rollback_operation(state, :delete, %{reason: reason})
+          end)
+          |> put_flash(:error, "Could not delete record.")
+
+        {:noreply, socket}
     end
   end
 
@@ -149,6 +184,15 @@ defmodule AshSDUI.LiveResource.Events do
   end
 
   defp reload_index(socket), do: socket
+
+  defp update_runtime_state(socket, fun) when is_function(fun, 1) do
+    state = RuntimeState.update(socket.assigns.ash_sdui_state, fun)
+    view = %{socket.assigns.ash_sdui_view | state: state}
+
+    socket
+    |> Phoenix.Component.assign(:ash_sdui_state, state)
+    |> Phoenix.Component.assign(:ash_sdui_view, view)
+  end
 
   defp next_sort_direction(%Query{sort: sort}, field, requested) do
     cond do
