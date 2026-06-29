@@ -130,7 +130,10 @@ defmodule AshSDUI.Query do
       |> normalize_params()
       |> Map.merge(to_params(query))
       |> Enum.reject(fn {_key, value} -> blank_query_value?(value) end)
-      |> Enum.into(%{})
+      |> Enum.flat_map(fn {key, value} ->
+        flatten_query_param(to_string(key), value)
+      end)
+      |> Enum.sort_by(&elem(&1, 0))
 
     case URI.encode_query(params) do
       "" -> path
@@ -154,7 +157,11 @@ defmodule AshSDUI.Query do
   defp ash_filter(%__MODULE__{} = query) do
     []
     |> maybe_add_search(query.search, query.search_fields)
-    |> Enum.concat(Enum.map(query.filters, fn {field, value} -> {field, value} end))
+    |> Enum.concat(
+      Enum.flat_map(query.filters, fn {field, value} ->
+        filter_clause(field, value)
+      end)
+    )
     |> case do
       [] -> nil
       filters -> filters
@@ -193,12 +200,15 @@ defmodule AshSDUI.Query do
     declared
     |> Enum.reduce(%{}, fn field, acc ->
       string_key = Atom.to_string(field)
-      value = Map.get(raw, string_key) || Map.get(raw, field)
+      value =
+        Map.get(raw, string_key) ||
+          Map.get(raw, field) ||
+          flattened_filter_value(params, string_key)
 
-      if blank?(value) do
+      if blank_filter_value?(value) do
         acc
       else
-        Map.put(acc, field, value)
+        Map.put(acc, field, normalize_filter_value(value))
       end
     end)
   end
@@ -262,6 +272,144 @@ defmodule AshSDUI.Query do
     |> Enum.filter(&is_atom/1)
   end
 
+  defp normalize_filter_value(value) when is_map(value) do
+    value
+    |> Normalize.mapify()
+    |> Enum.reduce(%{}, fn {key, subvalue}, acc ->
+      if blank?(subvalue) do
+        acc
+      else
+        Map.put(acc, to_string(key), subvalue)
+      end
+    end)
+  end
+
+  defp normalize_filter_value(value), do: value
+
+  defp filter_clause(_field, value) when value == nil, do: []
+
+  defp filter_clause(field, value) when is_map(value) do
+    case range_filter(value) do
+      [] -> []
+      range -> [{field, range}]
+    end
+  end
+
+  defp filter_clause(field, value), do: [{field, value}]
+
+  defp range_filter(value) do
+    []
+    |> maybe_put_range(:gte, Map.get(value, "from"), :from)
+    |> maybe_put_range(range_operator(Map.get(value, "to")), Map.get(value, "to"), :to)
+  end
+
+  defp maybe_put_range(acc, _op, nil, _bound), do: acc
+  defp maybe_put_range(acc, _op, "", _bound), do: acc
+
+  defp maybe_put_range(acc, op, value, bound) do
+    case parse_range_bound(value, bound) do
+      nil -> acc
+      parsed -> Keyword.put(acc, op, parsed)
+    end
+  end
+
+  defp parse_range_bound(value, :from) do
+    parse_range_datetime(value, :from)
+  end
+
+  defp parse_range_bound(value, :to) do
+    parse_range_datetime(value, :to)
+  end
+
+  defp parse_range_datetime(value, bound) do
+    value = to_string(value)
+
+    cond do
+      String.contains?(value, "T") ->
+        with {:ok, naive} <- NaiveDateTime.from_iso8601(normalize_datetime_local(value)),
+             {:ok, datetime} <- DateTime.from_naive(naive, "Etc/UTC") do
+          datetime
+        else
+          _ -> nil
+        end
+
+      bound == :from ->
+        with {:ok, date} <- Date.from_iso8601(value),
+             {:ok, datetime} <- DateTime.new(date, ~T[00:00:00], "Etc/UTC") do
+          datetime
+        else
+          _ -> nil
+        end
+
+      true ->
+        with {:ok, date} <- Date.from_iso8601(value),
+             next_date <- Date.add(date, 1),
+             {:ok, datetime} <- DateTime.new(next_date, ~T[00:00:00], "Etc/UTC") do
+          datetime
+        else
+          _ -> nil
+        end
+    end
+  end
+
+  defp normalize_datetime_local(value) do
+    case String.split(value, "T", parts: 2) do
+      [date, time] ->
+        time =
+          case String.split(time, ":") do
+            [hour, minute] -> "#{hour}:#{minute}:00"
+            [hour, minute, second] -> "#{hour}:#{minute}:#{second}"
+            other -> Enum.join(other, ":")
+          end
+
+        "#{date}T#{time}"
+
+      _ ->
+        value
+    end
+  end
+
+  defp range_operator(value) when is_binary(value) do
+    if String.contains?(value, "T"), do: :lte, else: :lt
+  end
+
+  defp range_operator(_value), do: :lt
+
+  defp blank_filter_value?(value) when is_map(value) do
+    value
+    |> Normalize.mapify()
+    |> Enum.all?(fn {_key, subvalue} -> blank?(subvalue) end)
+  end
+
+  defp blank_filter_value?(value), do: blank?(value)
+
+  defp flattened_filter_value(params, field_name) do
+    prefix = "filters[#{field_name}]"
+    exact = Map.get(Normalize.mapify(params), prefix)
+
+    map =
+      params
+    |> Normalize.mapify()
+    |> Enum.reduce(%{}, fn {key, value}, acc ->
+      key = to_string(key)
+
+      cond do
+        String.starts_with?(key, prefix <> "[") ->
+          subkey =
+            key
+            |> String.replace_prefix(prefix <> "[", "")
+            |> String.trim_trailing("]")
+
+          Map.put(acc, subkey, value)
+
+        true ->
+          acc
+      end
+    end)
+
+    if map_size(map) > 0, do: map, else: exact
+  end
+
   defp maybe_reset_offset(params, event) when event in [:search, :filter, :sort] do
     Map.delete(params, "offset")
     |> Map.delete(:offset)
@@ -316,10 +464,18 @@ defmodule AshSDUI.Query do
 
   defp blank_query_value?(nil), do: true
   defp blank_query_value?(""), do: true
-  defp blank_query_value?(%{}), do: true
-
   defp blank_query_value?(value) when is_map(value),
     do: Enum.all?(value, fn {_k, v} -> blank_query_value?(v) end)
 
   defp blank_query_value?(_value), do: false
+
+  defp flatten_query_param(key, value) when is_map(value) do
+    value
+    |> Enum.sort_by(fn {subkey, _subvalue} -> to_string(subkey) end)
+    |> Enum.flat_map(fn {subkey, subvalue} ->
+      flatten_query_param("#{key}[#{subkey}]", subvalue)
+    end)
+  end
+
+  defp flatten_query_param(key, value), do: [{key, value}]
 end

@@ -28,7 +28,7 @@ defmodule SduiDemo.UI.Resources.PostUI do
     ui_query(:default,
       search: [:title, :body],
       sort: [:title, :published_at],
-      filters: [:title],
+      filters: [:published_at],
       default_sort: [published_at: :desc],
       default_limit: 10
     )
@@ -104,6 +104,7 @@ defmodule SduiDemo.UI.Resources.PostUI do
       index?: true,
       show?: true,
       form?: false,
+      filter?: true,
       sortable?: true
     )
   end

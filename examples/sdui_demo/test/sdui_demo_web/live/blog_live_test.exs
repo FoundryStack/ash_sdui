@@ -67,6 +67,7 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
 
       assert html =~ ~s(data-testid="editorial-feed")
       assert html =~ ~s(data-testid="editorial-posts-page")
+      assert html =~ ~s(data-phx-link="redirect")
       assert html =~ "mx-auto w-full max-w-6xl"
       assert html =~ "Featured story"
       assert html =~ "More from the feed"
@@ -117,6 +118,7 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
     } do
       {:ok, _view, html} = live(conn, "/posts/generated")
 
+      assert html =~ ~s(data-phx-link="redirect")
       assert html =~ "mx-auto w-full max-w-6xl"
       assert html =~ "Headline"
       assert html =~ "Published"
@@ -132,14 +134,23 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
       {:ok, view, html} = live(conn, "/posts/generated")
 
       assert html =~ "Search"
+      assert html =~ "Published"
+      assert html =~ ~s(type="datetime-local")
       assert html =~ "Reset"
 
       view
-      |> form("form[phx-change='query']", %{"search" => "Test"})
+      |> form("form[phx-change='query']", %{
+        "filters" => %{"published_at" => %{"from" => "2024-01-01T08:00", "to" => "2024-01-31T17:30"}}
+      })
       |> render_change()
 
-      assert_patch(view, "/posts/generated?limit=10&search=Test&sort=-published_at")
-      assert render(view) =~ ~s(value="Test")
+      assert_patch(
+        view,
+        "/posts/generated?filters%5Bpublished_at%5D%5Bfrom%5D=2024-01-01T08%3A00&filters%5Bpublished_at%5D%5Bto%5D=2024-01-31T17%3A30&limit=10&sort=-published_at"
+      )
+
+      assert render(view) =~ ~s(value="2024-01-01T08:00")
+      assert render(view) =~ ~s(value="2024-01-31T17:30")
     end
 
     test "generated index toggles sort and pagination in params", %{conn: conn} do
@@ -185,6 +196,7 @@ defmodule SduiDemoWeb.Live.BlogLiveTest do
     test "renders PostCard via SDUI", %{conn: conn, post: post} do
       {:ok, _view, html} = live(conn, "/posts/#{post.id}")
 
+      assert html =~ ~s(class="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6")
       assert html =~ ~s(data-testid="post-card")
       assert html =~ post.title
     end

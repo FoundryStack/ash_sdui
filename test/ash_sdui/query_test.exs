@@ -90,6 +90,35 @@ defmodule AshSDUI.QueryTest do
            }
   end
 
+  test "date range filters convert into ash-friendly datetime bounds" do
+    query =
+      Query.from_params(
+        %{
+          "filters[published_at][from]" => "2024-01-01T08:00",
+          "filters[published_at][to]" => "2024-01-31T17:30"
+        },
+        %{
+          name: :default,
+          filters: [:published_at]
+        }
+      )
+
+    assert query.filters == %{
+             published_at: %{"from" => "2024-01-01T08:00", "to" => "2024-01-31T17:30"}
+           }
+
+    assert Query.to_params(query) == %{
+             "filters" => %{"published_at" => %{"from" => "2024-01-01T08:00", "to" => "2024-01-31T17:30"}}
+           }
+
+    assert Query.merge_path("/posts/generated", query) ==
+             "/posts/generated?filters%5Bpublished_at%5D%5Bfrom%5D=2024-01-01T08%3A00&filters%5Bpublished_at%5D%5Bto%5D=2024-01-31T17%3A30"
+
+    assert [filter: [published_at: range]] = Query.to_ash_opts(query)
+    assert Keyword.get(range, :gte) == ~U[2024-01-01 08:00:00Z]
+    assert Keyword.get(range, :lte) == ~U[2024-01-31 17:30:00Z]
+  end
+
   test "update preserves unrelated current params while resetting offset on search-like events" do
     query =
       Query.from_params(

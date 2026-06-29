@@ -29,6 +29,7 @@ defmodule AshSDUI.Components.RecordList do
 
   def render(assigns) do
     query = assigns[:state] && assigns.state.query
+    filter_fields = filter_fields(assigns.fields, query)
 
     assigns = assign(assigns, :query, query)
     assigns =
@@ -36,6 +37,7 @@ defmodule AshSDUI.Components.RecordList do
       |> assign(:loading?, State.pending_count(assigns.state) > 0)
       |> assign(:offline?, State.offline?(assigns.state))
       |> assign(:column_count, length(assigns.fields) + if(assigns.intents != [], do: 1, else: 0))
+      |> assign(:filter_fields, filter_fields)
 
     ~H"""
     <div class={["space-y-4", @class]}>
@@ -44,7 +46,7 @@ defmodule AshSDUI.Components.RecordList do
         <span :if={@offline?} class="badge badge-warning badge-outline">Offline</span>
       </div>
 
-      <.query_controls :if={@query} query={@query} />
+      <.query_controls :if={@query} query={@query} filter_fields={@filter_fields} />
 
       <%= if Enum.empty?(@records) do %>
         <%= if @loading? do %>
@@ -124,11 +126,12 @@ defmodule AshSDUI.Components.RecordList do
   end
 
   attr(:query, :any, required: true)
+  attr(:filter_fields, :list, required: true)
 
   defp query_controls(assigns) do
     ~H"""
     <form phx-change="query" class="rounded-box border border-base-300 bg-base-100 p-4">
-      <div class="grid gap-3 md:grid-cols-[minmax(0,2fr)_repeat(auto-fit,minmax(10rem,1fr))_auto] md:items-end">
+      <div class="grid gap-3 md:grid-cols-[minmax(0,2fr)_repeat(auto-fit,minmax(12rem,1fr))_auto] md:items-end">
         <label :if={@query.search_fields != []} class="form-control">
           <span class="label-text text-sm font-medium">Search</span>
           <input
@@ -140,15 +143,45 @@ defmodule AshSDUI.Components.RecordList do
           />
         </label>
 
-        <label :for={field <- @query.filter_fields} class="form-control">
-          <span class="label-text text-sm font-medium">{labelize(field)}</span>
-          <input
-            type="text"
-            name={"filters[#{field}]"}
-            value={Map.get(@query.filters, field, "")}
-            class="input input-bordered w-full"
-          />
-        </label>
+        <%= for field <- @filter_fields do %>
+          <%= if datetime_filter?(field) do %>
+            <div class="form-control">
+              <span class="label-text text-sm font-medium">{field.label || labelize(field.name)}</span>
+              <div class="grid grid-cols-2 gap-2">
+                <label class="form-control">
+                  <span class="label-text text-xs text-base-content/60">From</span>
+                  <input
+                    type="datetime-local"
+                    name={"filters[#{field.name}][from]"}
+                    value={Map.get(Map.get(@query.filters, field.name, %{}), "from", "")}
+                    class="input input-bordered w-full"
+                    step="60"
+                  />
+                </label>
+                <label class="form-control">
+                  <span class="label-text text-xs text-base-content/60">To</span>
+                  <input
+                    type="datetime-local"
+                    name={"filters[#{field.name}][to]"}
+                    value={Map.get(Map.get(@query.filters, field.name, %{}), "to", "")}
+                    class="input input-bordered w-full"
+                    step="60"
+                  />
+                </label>
+              </div>
+            </div>
+          <% else %>
+            <label class="form-control">
+              <span class="label-text text-sm font-medium">{field.label || labelize(field.name)}</span>
+              <input
+                type="text"
+                name={"filters[#{field.name}]"}
+                value={Map.get(@query.filters, field.name, "")}
+                class="input input-bordered w-full"
+              />
+            </label>
+          <% end %>
+        <% end %>
 
         <div class="flex items-center gap-2 md:justify-end">
           <button type="button" phx-click="reset_query" class="btn btn-ghost btn-sm">Reset</button>
@@ -197,6 +230,11 @@ defmodule AshSDUI.Components.RecordList do
     Map.get(field, :sortable?, false) or Map.get(field, :name) in (query.sort_fields || [])
   end
 
+  defp datetime_filter?(field) do
+    Map.get(field, :type) in [:utc_datetime, :date, Ash.Type.UtcDatetime] or
+      Map.get(field, :widget) == :datetime
+  end
+
   defp sort_indicator(nil, _field), do: ""
   defp sort_indicator(%{sort: [{field, :desc} | _]}, field), do: "DESC"
   defp sort_indicator(%{sort: [{field, _} | _]}, field), do: "ASC"
@@ -220,5 +258,15 @@ defmodule AshSDUI.Components.RecordList do
     |> Atom.to_string()
     |> String.replace("_", " ")
     |> String.capitalize()
+  end
+
+  defp filter_fields(_fields, nil), do: []
+
+  defp filter_fields(fields, query) do
+    allowed = MapSet.new(query.filter_fields || [])
+
+    fields
+    |> Enum.filter(&MapSet.member?(allowed, &1.name))
+    |> Enum.sort_by(& &1.order)
   end
 end

@@ -537,6 +537,7 @@ defmodule AshSDUI.View do
   defp infer_widget(%{type: Ash.Type.String}), do: :text_input
   defp infer_widget(%{type: :string}), do: :text_input
   defp infer_widget(%{type: :utc_datetime}), do: :datetime
+  defp infer_widget(%{type: Ash.Type.UtcDatetime}), do: :datetime
   defp infer_widget(_), do: :text_input
 
   defp apply_overrides(items, overrides) do
